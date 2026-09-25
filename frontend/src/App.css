@@ -86,6 +86,14 @@ h2 { font-size: 19px; letter-spacing: -.025em; line-height: 1.25; }
 .session-state.is-open { border-color: #3b695e; color: var(--healthy); }
 .secondary-button { padding: 10px 13px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); color: var(--text); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .secondary-button:hover { border-color: var(--muted); }
+.secondary-button:disabled { cursor: not-allowed; opacity: .45; }
+.replay-panel { padding: 20px 24px; }
+.replay-panel .panel-heading { margin-bottom: 18px; }
+.replay-controls { display: flex; align-items: center; gap: 12px; }
+.replay-controls label { color: var(--muted-strong); font-size: 12px; white-space: nowrap; }
+.replay-controls input[type="range"] { flex: 1; min-width: 90px; accent-color: var(--cure); }
+.replay-error { display: grid; gap: 10px; }
+.replay-error > button { justify-self: start; }
 .chart-panel .panel-heading { margin-bottom: 15px; }
 .history-chart { width: 100%; height: 350px; min-width: 0; }
 .chart-tooltip { min-width: 190px; padding: 13px 15px; border: 1px solid #526b7c; border-radius: 8px; background: #1d2d39; box-shadow: 0 12px 28px #0008; font-size: 12px; }
@@ -135,6 +143,8 @@ h2 { font-size: 19px; letter-spacing: -.025em; line-height: 1.25; }
   .view-heading { display: block; }
   .view-note { display: block; margin-top: 8px; text-align: left; }
   .history-toolbar { align-items: stretch; flex-direction: column; }
+  .replay-controls { flex-wrap: wrap; }
+  .replay-controls input[type="range"] { flex-basis: 100%; }
   .history-toolbar > div:first-child { min-width: 0; }
   .toolbar-actions { justify-content: space-between; }
   .panel-meta { max-width: 130px; }

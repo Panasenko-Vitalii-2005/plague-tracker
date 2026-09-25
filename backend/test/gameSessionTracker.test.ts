@@ -138,6 +138,7 @@ test('rapid snapshots stay ordered with asynchronous repositories', async () => 
       async save(value) { await Promise.resolve(); snapshotStore.save(value); },
       list: (sessionId) => snapshotStore.list(sessionId),
       getLatestForSession: (sessionId) => snapshotStore.getLatestForSession(sessionId),
+      getByDay: (sessionId, day) => snapshotStore.getByDay(sessionId, day),
       getSessionStats: (sessionId) => snapshotStore.getSessionStats(sessionId),
       getGlobalHistory: (sessionId) => snapshotStore.getGlobalHistory(sessionId),
       getCountryHistory: (sessionId, countryId) => snapshotStore.getCountryHistory(sessionId, countryId),

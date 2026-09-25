@@ -19,6 +19,10 @@ export interface LiveSnapshot {
   countries: CountrySnapshot[]
 }
 
+export interface HistoricalSnapshot extends LiveSnapshot {
+  sessionId: string
+}
+
 export interface CollectorStatus {
   running: boolean
   lastError: string | null

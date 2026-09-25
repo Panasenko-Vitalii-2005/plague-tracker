@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { apiUrl, normalizeApiBaseUrl } from '../src/api/config.ts'
-import { ApiError, getCountryHistory, getSessionCountries, getSessions } from '../src/api/client.ts'
-import { parseLiveState, parseSessionCountries, parseSessionHistory, parseSessions } from '../src/api/parse.ts'
+import { ApiError, getCountryHistory, getHistoricalSnapshot, getSessionCountries, getSessions } from '../src/api/client.ts'
+import { parseHistoricalSnapshot, parseLiveState, parseSessionCountries, parseSessionHistory, parseSessions } from '../src/api/parse.ts'
 
 const country = {
   index: 2, id: 'soudi_arabia', currentPopulation: 90, originalPopulation: 100,
@@ -49,6 +49,31 @@ test('live response parsing keeps raw country ID unchanged', () => {
   assert.equal(value.snapshot?.cureProgress, 25.51)
   assert.throws(() => parseLiveState({ collector: { running: true, lastError: null }, session: null,
     snapshot: { ...snapshot, countries: [{ ...country, infected: 'twenty' }] } }), /country.infected/)
+})
+
+test('full historical snapshot parser validates every field and keeps raw country IDs', () => {
+  const parsed = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot })
+  assert.equal(parsed.sessionId, 'session-a')
+  assert.deepEqual(parsed.countries, [country])
+  for (const [key, value] of Object.entries({ sessionId: 4, capturedAt: 4, day: '10', gameDate: 4,
+    diseaseTurn: '12', eventTurn: '14', cureProgress: '25', countries: null })) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, [key]: value }))
+  }
+  assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+    countries: [{ ...country, infected: '20' }] }), /country.infected/)
+})
+
+test('full historical snapshot client requests the observed day', async () => {
+  const original = globalThis.fetch
+  const urls: string[] = []
+  globalThis.fetch = async (input) => {
+    urls.push(String(input))
+    return new Response(JSON.stringify({ sessionId: 'session-a', ...snapshot }), { status: 200 })
+  }
+  try {
+    assert.equal((await getHistoricalSnapshot('session-a', 10)).day, 10)
+    assert.deepEqual(urls, ['/api/v1/sessions/session-a/days/10'])
+  } finally { globalThis.fetch = original }
 })
 
 test('historical country list parsing preserves backend order and raw IDs', () => {

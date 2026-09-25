@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCountryHistory, getSession, getSessionCountries, getSessionHistory, getSessions } from '../api/client.ts'
+import { getCountryHistory, getHistoricalSnapshot, getSession, getSessionCountries, getSessionHistory, getSessions } from '../api/client.ts'
 import type {
-  CountryHistoryResponse, SessionCountriesResponse, SessionDetails, SessionHistoryResponse, SessionSummary,
+  CountryHistoryResponse, HistoricalSnapshot, SessionCountriesResponse, SessionDetails, SessionHistoryResponse, SessionSummary,
 } from '../api/types.ts'
 
 export type Resource<T> =
@@ -57,6 +57,12 @@ export function useSession(sessionId: string | null): Resource<SessionDetails> {
 export function useSessionHistory(sessionId: string | null): Resource<SessionHistoryResponse> {
   const load = useCallback((signal: AbortSignal) => getSessionHistory(sessionId!, signal), [sessionId])
   return useResource(sessionId, load, emptyHistory)
+}
+
+export function useHistoricalSnapshot(sessionId: string | null, day: number | null): Resource<HistoricalSnapshot> {
+  const key = sessionId !== null && day !== null ? `${sessionId}\u0000${day}` : null
+  const load = useCallback((signal: AbortSignal) => getHistoricalSnapshot(sessionId!, day!, signal), [sessionId, day])
+  return useResource(key, load, neverEmpty)
 }
 
 export function useSessionCountries(sessionId: string | null): Resource<SessionCountriesResponse> {

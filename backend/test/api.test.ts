@@ -197,6 +197,36 @@ test('global history is day-ordered, gap-preserving, aggregated, and deduplicate
   assert.equal('countries' in points[0], false);
 });
 
+test('full day endpoint returns the exact observed snapshot and ordered raw country IDs', async (t) => {
+  const { app, sessions, snapshots } = fixture(t);
+  sessions.save(session('game-1', '2026-09-01T00:00:00.000Z', 100));
+  const saved = historical('game-1', 104, 2);
+  saved.countries = [
+    { ...saved.countries[0]!, index: 3, id: 'soudi_arabia' },
+    { ...saved.countries[1]!, index: 1, id: 'morroco' },
+    { ...saved.countries[0]!, index: 2, id: 'philipines' },
+    { ...saved.countries[0]!, index: 4, id: 'balcan_states' },
+  ];
+  snapshots.save(historical('game-1', 100));
+  snapshots.save(saved);
+  const response = await app.inject('/api/v1/sessions/game-1/days/104');
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { ...saved, countries: [...saved.countries].sort((a, b) => a.index - b.index) });
+  assert.deepEqual(response.json().countries.map((item: { id: string }) => item.id),
+    ['morroco', 'philipines', 'soudi_arabia', 'balcan_states']);
+  const gap = await app.inject('/api/v1/sessions/game-1/days/101');
+  assert.equal(gap.statusCode, 404);
+  assert.equal(gap.json().error.code, 'SNAPSHOT_NOT_FOUND');
+  const unknown = await app.inject('/api/v1/sessions/unknown/days/104');
+  assert.equal(unknown.statusCode, 404);
+  assert.equal(unknown.json().error.code, 'SESSION_NOT_FOUND');
+  for (const day of ['-1', '1.5', 'abc', '1e2', '9007199254740992']) {
+    const invalid = await app.inject(`/api/v1/sessions/game-1/days/${day}`);
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.json().error.code, 'INVALID_DAY');
+  }
+});
+
 test('country history preserves raw IDs, orders days, and rejects unknown country', async (t) => {
   const { app, sessions, snapshots } = fixture(t);
   sessions.save(session('game-1', '2026-09-01T00:00:00.000Z', 100));
