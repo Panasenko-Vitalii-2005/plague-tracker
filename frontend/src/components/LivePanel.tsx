@@ -5,6 +5,7 @@ import { globalPercentages, liveStatus } from '../domain/dashboard.ts'
 import { formatPercent } from '../domain/format.ts'
 import { aggregateCountries } from '../domain/metrics.ts'
 import { CountryOverview } from './CountryOverview.tsx'
+import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
@@ -47,6 +48,7 @@ export function LivePanel({ live }: { live: LiveGameView }) {
           tone="zombies" quiet={metrics.zombies === 0} />
       </div>
     </section>
+    <CountryGrid countries={snapshot.countries} />
     <div className="country-layout">
       <section className="surface country-pick-panel" aria-label="Choose live country">
         <div className="panel-heading"><div><span className="eyebrow">COUNTRY</span><h2>Explore the map data</h2></div></div>

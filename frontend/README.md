@@ -43,6 +43,17 @@ at the last observation, and manual navigation pauses it. Chart X values are
 authoritative game days, so missing days are not interpolated. Population
 percentages are presentation-only and use original population as denominator.
 
+The Countries grid appears below Global population in LIVE and HISTORY. It
+lists every country (all 58 when present) in the current live or selected
+historical snapshot in collector index order, with the saved current
+population and each recorded health count. The donut shows the mix of recorded
+Healthy, Infected and Dead
+counts, normalized to their sum. It does not use current or original population
+as a denominator. Zombies remain a separate numeric count because the
+collector contract does not establish whether they overlap another status;
+including them in the donut could double count people. Empty status counts
+show an empty ring.
+
 Country IDs remain raw backend IDs in API requests and storage. HISTORY loads
 the selected session's country list from `/sessions/:sessionId/countries`, so
 country selection and history work when no game is running. Display labels

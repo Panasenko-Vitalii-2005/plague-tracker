@@ -4,8 +4,9 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { LiveGameView } from '../src/api/liveStore.ts'
-import type { CountryHistoryResponse, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
+import type { CountryHistoryResponse, CountrySnapshot, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
   SessionHistoryResponse, SessionSummary } from '../src/api/types.ts'
+import { countryStatusComposition } from '../src/domain/countryDonut.ts'
 import type { Resource } from '../src/hooks/useHistory.ts'
 import type { HistoricalReplay } from '../src/hooks/useReplay.ts'
 
@@ -14,13 +15,15 @@ let MetricCard: typeof import('../src/components/MetricCard.tsx').MetricCard
 let CureProgress: typeof import('../src/components/CureProgress.tsx').CureProgress
 let LivePanel: typeof import('../src/components/LivePanel.tsx').LivePanel
 let HistoryDashboard: typeof import('../src/components/HistoryPanel.tsx').HistoryDashboard
+let CountryGrid: typeof import('../src/components/CountryGrid.tsx').CountryGrid
 
 before(async () => {
-  server = await createServer({ root: process.cwd(), server: { middlewareMode: true }, appType: 'custom' })
+  server = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: 'custom' })
   MetricCard = (await server.ssrLoadModule('/src/components/MetricCard.tsx')).MetricCard
   CureProgress = (await server.ssrLoadModule('/src/components/CureProgress.tsx')).CureProgress
   LivePanel = (await server.ssrLoadModule('/src/components/LivePanel.tsx')).LivePanel
   HistoryDashboard = (await server.ssrLoadModule('/src/components/HistoryPanel.tsx')).HistoryDashboard
+  CountryGrid = (await server.ssrLoadModule('/src/components/CountryGrid.tsx')).CountryGrid
 })
 after(async () => { await server?.close() })
 
@@ -30,6 +33,69 @@ const replay = (snapshot: HistoricalSnapshot | null, day: number | null): Histor
   days: [10, 13], day, index: day === 10 ? 0 : 1,
   snapshot: snapshot ? loaded(snapshot) : idle(), isPlaying: false,
   selectIndex: () => {}, previous: () => {}, next: () => {}, togglePlay: () => {}, reset: () => {},
+})
+
+const countryCardFixture = (id: string, index: number,
+  overrides: Partial<CountrySnapshot> = {}): CountrySnapshot => ({
+  id, index, currentPopulation: 80_000_000, originalPopulation: 100_000_000,
+  healthyPopulation: 20_000_000, infected: 55_000_000, zombies: 0,
+  deadPopulation: 5_000_000, ...overrides,
+})
+
+test('all country cards render in index order with readable names and current population', () => {
+  const input = [countryCardFixture('balcan_states', 2), countryCardFixture('soudi_arabia', 0),
+    countryCardFixture('morroco', 1)]
+  const html = renderToStaticMarkup(createElement(CountryGrid, { countries: input }))
+  assert.equal((html.match(/class="surface country-card"/g) ?? []).length, 3)
+  assert.ok(html.indexOf('Soudi Arabia country card') < html.indexOf('Morroco country card'))
+  assert.ok(html.indexOf('Morroco country card') < html.indexOf('Balcan States country card'))
+  assert.deepEqual(input.map((item) => item.id), ['balcan_states', 'soudi_arabia', 'morroco'])
+  assert.match(html, /<dt>Population<\/dt><dd>80 000 000<\/dd>/)
+  assert.match(html, /<dt>Healthy<\/dt><dd>20 000 000<\/dd>/)
+  assert.match(html, /<dt>Infected<\/dt><dd>55 000 000<\/dd>/)
+  assert.match(html, /<dt>Zombies<\/dt><dd>0<\/dd>/)
+  assert.match(html, /<dt>Dead<\/dt><dd>5 000 000<\/dd>/)
+  assert.match(html, /Recorded status mix for Soudi Arabia/)
+  assert.equal((html.match(/<svg class="country-card-donut"/g) ?? []).length, 3)
+})
+
+test('all 58 observed countries are rendered without dropping or changing raw IDs', () => {
+  const countries = Array.from({ length: 58 }, (_, index) => countryCardFixture(`raw_country_${index}`, index)).reverse()
+  const html = renderToStaticMarkup(createElement(CountryGrid, { countries }))
+  assert.equal((html.match(/class="surface country-card"/g) ?? []).length, 58)
+  assert.ok(html.indexOf('Raw Country 0 country card') < html.indexOf('Raw Country 57 country card'))
+  assert.deepEqual(countries.map((item) => item.id), Array.from({ length: 58 }, (_, index) => `raw_country_${57 - index}`))
+})
+
+test('donut composition uses recorded healthy/infected/dead counts without adding zombies', () => {
+  const withZombies = countryCardFixture('peru', 0, { zombies: 60_000_000 })
+  const composition = countryStatusComposition(withZombies)
+  assert.deepEqual(composition.slices, [
+    { name: 'Healthy', value: 20_000_000 },
+    { name: 'Infected', value: 55_000_000 },
+    { name: 'Dead', value: 5_000_000 },
+  ])
+  assert.equal(composition.total, 80_000_000)
+  assert.equal(countryStatusComposition({ ...withZombies, zombies: 0 }).total, composition.total)
+  const html = renderToStaticMarkup(createElement(CountryGrid, { countries: [withZombies] }))
+  assert.equal((html.match(/stroke-dasharray=/g) ?? []).length, 3)
+  assert.match(html, /Zombies are shown separately/)
+})
+
+test('empty, zero-population, long-name and large-count cards render safely', () => {
+  const empty = renderToStaticMarkup(createElement(CountryGrid, { countries: [] }))
+  assert.match(empty, /No countries in this snapshot/)
+  const zero = renderToStaticMarkup(createElement(CountryGrid, { countries: [countryCardFixture('peru', 0, {
+    currentPopulation: 0, originalPopulation: 0, healthyPopulation: 0,
+    infected: 0, zombies: 0, deadPopulation: 0,
+  })] }))
+  assert.match(zero, /country-card-empty-donut/)
+  assert.doesNotMatch(zero, /NaN|Infinity/)
+  const large = renderToStaticMarkup(createElement(CountryGrid, { countries: [countryCardFixture(
+    'very_long_country_name_with_several_words', 0, { currentPopulation: 1_234_567_890_123 },
+  )] }))
+  assert.match(large, /Very Long Country Name With Several Words/)
+  assert.match(large, /1 234 567 890 123/)
 })
 
 test('metric card and cure indicator format only their presentation', () => {
@@ -69,6 +135,9 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
   assert.match(html, /South Africa/)
   assert.match(html, /17,00% of original population/)
   assert.match(html, /Original population/)
+  assert.match(html, /South Africa country card/)
+  assert.match(html, /<dt>Population<\/dt><dd>990<\/dd>/)
+  assert.match(html, /<dt>Infected<\/dt><dd>170<\/dd>/)
 })
 
 test('history dashboard renders saved session, global values and historical country data', () => {
@@ -109,6 +178,8 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(html, /30,00% of original population/)
   assert.match(html, /Original population/)
   assert.match(html, /Historical replay timeline/)
+  assert.match(html, /South Africa country card/)
+  assert.match(html, /<dt>Infected<\/dt><dd>30<\/dd>/)
   assert.doesNotMatch(html, /day 11/i)
 
   const prior: HistoricalSnapshot = { ...selected, day: 10, gameDate: '2026-01-10', cureProgress: 2,
@@ -121,11 +192,28 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(priorHtml, /2,00%/)
   assert.match(priorHtml, /5,00% of original population/)
   assert.doesNotMatch(priorHtml, /30,00% of original population/)
+  assert.match(priorHtml, /South Africa country card/)
+  assert.match(priorHtml, /<dt>Infected<\/dt><dd>5<\/dd>/)
+  assert.doesNotMatch(priorHtml, /<dt>Infected<\/dt><dd>30<\/dd>/)
 
   const absentHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,
     countries, country, replay: replay({ ...selected, countries: [] }, 13), sessionId: summary.id,
     onSessionChange: () => {}, preferredCountryId: 'south_africa', onCountryChange: () => {} }))
   assert.match(absentHtml, /No country data on this day/)
+  assert.match(absentHtml, /No countries in this snapshot/)
+
+  const loadingHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,
+    countries, country, replay: { ...replay(null, 10), snapshot: { status: 'loading', data: null,
+      error: null, reload: () => {} } }, sessionId: summary.id, onSessionChange: () => {},
+    preferredCountryId: 'south_africa', onCountryChange: () => {} }))
+  assert.match(loadingHtml, /Loading day 10/)
+  assert.doesNotMatch(loadingHtml, /country-card/)
+  const errorHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,
+    countries, country, replay: { ...replay(null, 10), snapshot: { status: 'error', data: null,
+      error: new Error('snapshot failed'), reload: () => {} } }, sessionId: summary.id,
+    onSessionChange: () => {}, preferredCountryId: 'south_africa', onCountryChange: () => {} }))
+  assert.match(errorHtml, /snapshot failed/)
+  assert.doesNotMatch(errorHtml, /country-card/)
 })
 
 test('history dashboard gives a distinct empty-session state', () => {
