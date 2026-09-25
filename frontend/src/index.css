@@ -1,0 +1,37 @@
+:root {
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #e9f0f4;
+  background: #0a1118;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+
+  --background: #0a1118;
+  --surface: #121c26;
+  --surface-raised: #182430;
+  --border: #2a3a48;
+  --text: #e9f0f4;
+  --muted: #98a9b8;
+  --muted-strong: #b5c3ce;
+  --healthy: #64c9ab;
+  --infected: #f0ba68;
+  --dead: #ee7977;
+  --zombies: #ab9bd9;
+  --cure: #71bfd6;
+  --accent: #e2736b;
+  --chart-grid: #263746;
+  --space-card: 16px;
+  --space-section: 22px;
+  --radius-panel: 12px;
+  --radius-control: 7px;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; }
+body { min-width: 320px; margin: 0; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled, select:disabled { cursor: not-allowed; opacity: .55; }
+:focus-visible { outline: 2px solid var(--cure); outline-offset: 3px; }
+#root { min-height: 100vh; }
