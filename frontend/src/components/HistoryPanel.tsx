@@ -8,6 +8,7 @@ import { useCountryHistory, useSession, useSessionCountries, useSessionHistory, 
   type Resource } from '../hooks/useHistory.ts'
 import { useReplay, type HistoricalReplay } from '../hooks/useReplay.ts'
 import { CountryOverview } from './CountryOverview.tsx'
+import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
@@ -144,6 +145,7 @@ export function HistoryDashboard({ sessions, session, global, countries, country
               tone="zombies" quiet={metrics.zombies === 0} />
           </div>
         </section>
+        <CountryGrid countries={snapshot.countries} />
       </>}
       {history.length > 0 && <>
         <section className="surface chart-panel" aria-label="Global history chart panel">
