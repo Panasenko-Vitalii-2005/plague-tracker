@@ -1,4 +1,4 @@
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { GlobalHistoryPoint } from '../api/types.ts'
 import { mapGlobalHistoryToChart, type ChartSnapshot } from '../domain/chart.ts'
 import { formatAxisPopulation, formatPercent, formatPopulation } from '../domain/format.ts'
@@ -15,7 +15,7 @@ function GlobalTooltip({ active, point }: { active?: boolean; point?: ChartSnaps
   </div>
 }
 
-export function HistoryChart({ history }: { history: GlobalHistoryPoint[] }) {
+export function HistoryChart({ history, selectedDay }: { history: GlobalHistoryPoint[]; selectedDay: number | null }) {
   const data = mapGlobalHistoryToChart(history)
   const hasZombies = data.some((point) => point.zombies > 0)
   return <div className="history-chart" role="img" aria-label="Global history by actual game day">
@@ -30,6 +30,8 @@ export function HistoryChart({ history }: { history: GlobalHistoryPoint[] }) {
           stroke="var(--muted)" tickLine={false} axisLine={false} />
         <Tooltip content={(props) => <GlobalTooltip active={props.active}
           point={props.payload?.[0]?.payload as ChartSnapshot | undefined} />} />
+        {selectedDay !== null && <ReferenceLine x={selectedDay} yAxisId="healthy" stroke="var(--cure)"
+          strokeWidth={2} strokeDasharray="5 4" label={{ value: `Day ${selectedDay}`, fill: 'var(--cure)' }} />}
         <Legend verticalAlign="top" height={42} iconType="plainline" />
         <Line yAxisId="healthy" dataKey="healthy" name="Healthy" stroke="var(--healthy)"
           strokeWidth={2.4} dot={false} isAnimationActive={false} />

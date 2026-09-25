@@ -1,6 +1,6 @@
 import type {
   CollectorStatus, CountryHistoryPoint, CountryHistoryResponse, CountrySnapshot,
-  GameSession, GlobalHistoryPoint, LiveSnapshot, LiveSnapshotEvent, LiveState,
+  GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
 } from './types.ts'
@@ -70,6 +70,11 @@ export function parseLiveSnapshot(value: unknown): LiveSnapshot {
     cureProgress: number(data.cureProgress, 'cureProgress'),
     countries: array(data.countries, 'countries').map(parseCountry),
   }
+}
+
+export function parseHistoricalSnapshot(value: unknown): HistoricalSnapshot {
+  const data = record(value, 'historical snapshot')
+  return { ...parseLiveSnapshot(data), sessionId: string(data.sessionId, 'sessionId') }
 }
 
 function parseSession(value: unknown): GameSession {

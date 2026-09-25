@@ -18,6 +18,7 @@ export interface SnapshotRepository {
   save(snapshot: HistoricalSnapshot): RepositoryResult<void>;
   list(sessionId?: string): RepositoryResult<HistoricalSnapshot[]>;
   getLatestForSession(sessionId: string): RepositoryResult<HistoricalSnapshot | null>;
+  getByDay(sessionId: string, day: number): RepositoryResult<HistoricalSnapshot | null>;
   getSessionStats(sessionId?: string): RepositoryResult<SessionStats[]>;
   getGlobalHistory(sessionId: string): RepositoryResult<GlobalHistoryPoint[]>;
   getCountryHistory(sessionId: string, countryId: string): RepositoryResult<CountryHistoryPoint[]>;
@@ -89,6 +90,14 @@ export class InMemorySnapshotRepository implements SnapshotRepository {
       if (!latest || snapshot.day > latest.day) latest = snapshot;
     }
     return latest ? copyHistoricalSnapshot(latest) : null;
+  }
+
+  getByDay(sessionId: string, day: number): HistoricalSnapshot | null {
+    const snapshot = this.snapshots.get(sessionId)?.get(day);
+    if (!snapshot) return null;
+    const result = copyHistoricalSnapshot(snapshot);
+    result.countries.sort((a, b) => a.index - b.index);
+    return result;
   }
 
   getSessionStats(sessionId?: string): SessionStats[] {

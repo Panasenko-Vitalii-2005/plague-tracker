@@ -2,9 +2,11 @@ import { lazy, memo, Suspense, useState } from 'react'
 import type { CountryHistoryResponse, SessionCountriesResponse, SessionDetails, SessionHistoryResponse, SessionSummary as SessionSummaryData } from '../api/types.ts'
 import { formatCountryName, resolveSessionCountry } from '../domain/countries.ts'
 import { globalPercentages } from '../domain/dashboard.ts'
+import { aggregateCountries } from '../domain/metrics.ts'
 import { formatPercent, formatPopulation } from '../domain/format.ts'
 import { useCountryHistory, useSession, useSessionCountries, useSessionHistory, useSessions,
   type Resource } from '../hooks/useHistory.ts'
+import { useReplay, type HistoricalReplay } from '../hooks/useReplay.ts'
 import { CountryOverview } from './CountryOverview.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
 import { CureProgress } from './CureProgress.tsx'
@@ -22,23 +24,25 @@ export const HistoryPanel = memo(function HistoryPanel() {
   const [preferredCountryId, setPreferredCountryId] = useState<string | null>(null)
   const session = useSession(sessionId || null)
   const global = useSessionHistory(sessionId || null)
+  const replay = useReplay(sessionId, global)
   const countries = useSessionCountries(sessionId || null)
   const availableCountries = countries.status === 'success' ? countries.data.countries : []
   const countryId = countries.status === 'success'
     ? resolveSessionCountry(availableCountries, preferredCountryId) : null
   const country = useCountryHistory(sessionId || null, countryId)
   return <HistoryDashboard sessions={sessions} session={session} global={global} countries={countries}
-    country={country} sessionId={sessionId} onSessionChange={setSessionId}
+    country={country} replay={replay} sessionId={sessionId} onSessionChange={(id) => { replay.reset(); setSessionId(id) }}
     preferredCountryId={preferredCountryId} onCountryChange={setPreferredCountryId} />
 })
 
-export function HistoryDashboard({ sessions, session, global, countries, country, sessionId,
+export function HistoryDashboard({ sessions, session, global, countries, country, replay, sessionId,
   onSessionChange, preferredCountryId, onCountryChange }: {
   sessions: Resource<SessionSummaryData[]>
   session: Resource<SessionDetails>
   global: Resource<SessionHistoryResponse>
   countries: Resource<SessionCountriesResponse>
   country: Resource<CountryHistoryResponse>
+  replay: HistoricalReplay
   sessionId: string
   onSessionChange(id: string): void
   preferredCountryId: string | null
@@ -52,10 +56,11 @@ export function HistoryDashboard({ sessions, session, global, countries, country
   const sessionData = session.status === 'success' ? session.data.session : selectedSummary
   const dateRange = session.status === 'success' ? session.data.range : selectedSummary
   const history = global.status === 'success' ? global.data.history : []
-  const latest = history.at(-1)
-  const latestPercentages = latest ? globalPercentages(latest) : null
+  const snapshot = replay.snapshot.status === 'success' ? replay.snapshot.data : null
+  const metrics = snapshot ? aggregateCountries(snapshot.countries) : null
+  const percentages = metrics ? globalPercentages(metrics) : null
   const countryHistory = country.status === 'success' ? country.data.history : []
-  const latestCountry = countryHistory.at(-1)
+  const selectedCountry = snapshot?.countries.find((item) => item.id === countryId) ?? null
 
   return <div className="dashboard-view" aria-label="Saved history dashboard">
     <div className="view-heading"><div><span className="eyebrow">RECORDED GAME DATA</span>
@@ -97,24 +102,55 @@ export function HistoryDashboard({ sessions, session, global, countries, country
       {global.status === 'error' && <EmptyState title="Global history unavailable" detail={global.error.message} tone="error" />}
       {global.status === 'empty' && <EmptyState title="No recorded days"
         detail="This session exists, but no daily snapshots have been saved yet." />}
-      {latest && <>
-        <CureProgress value={latest.cureProgress} />
-        <section className="kpi-section" aria-label="Latest recorded global metrics">
-          <div className="section-title"><div><span className="eyebrow">LAST RECORDED DAY · {latest.day}</span>
-            <h2>Population</h2></div><span>{latest.gameDate}</span></div>
+      {replay.day !== null && <section className="surface replay-panel" aria-label="Historical replay timeline">
+        <div className="panel-heading"><div><span className="eyebrow">HISTORICAL REPLAY</span>
+          <h2>Day {replay.day}</h2></div><span className="panel-meta">
+            Observation {replay.index + 1} of {replay.days.length}</span></div>
+        <div className="replay-controls">
+          <button type="button" className="secondary-button" onClick={replay.previous}
+            disabled={replay.index <= 0}>Previous</button>
+          <button type="button" className="secondary-button" onClick={replay.togglePlay}
+            disabled={replay.days.length < 2}>{replay.isPlaying ? 'Pause' : 'Play'}</button>
+          <button type="button" className="secondary-button" onClick={replay.next}
+            disabled={replay.index >= replay.days.length - 1}>Next</button>
+          <label htmlFor="history-timeline">Observed day</label>
+          <input id="history-timeline" type="range" min={0} max={replay.days.length - 1}
+            value={replay.index} onChange={(event) => replay.selectIndex(Number(event.target.value))}
+            aria-valuetext={`Day ${replay.day}`} />
+        </div>
+      </section>}
+      {replay.day !== null && replay.snapshot.status === 'loading' && <EmptyState title={`Loading day ${replay.day}`}
+        detail="Reading the saved world snapshot…" />}
+      {replay.day !== null && replay.snapshot.status === 'error' && <div className="replay-error">
+        <EmptyState title={`Day ${replay.day} unavailable`} detail={replay.snapshot.error.message} tone="error" />
+        <button type="button" className="secondary-button" onClick={replay.snapshot.reload}>Retry day</button>
+      </div>}
+      {snapshot && metrics && <>
+        <SessionSummary sessionId={sessionId} items={[
+          { label: 'SELECTED DAY', value: snapshot.day },
+          { label: 'GAME DATE', value: snapshot.gameDate },
+          { label: 'CURE', value: formatPercent(snapshot.cureProgress) },
+          { label: 'ORIGINAL POPULATION', value: formatPopulation(metrics.originalPopulation) },
+        ]} />
+        <CureProgress value={snapshot.cureProgress} />
+        <section className="kpi-section" aria-label="Selected historical global metrics">
+          <div className="section-title"><div><span className="eyebrow">SELECTED DAY · {snapshot.day}</span>
+            <h2>Population</h2></div><span>{snapshot.gameDate}</span></div>
           <div className="kpi-grid">
-            <MetricCard label="Healthy" value={latest.healthy} percent={latestPercentages?.healthy} tone="healthy" />
-            <MetricCard label="Infected" value={latest.infected} percent={latestPercentages?.infected} tone="infected" />
-            <MetricCard label="Dead" value={latest.dead} percent={latestPercentages?.dead} tone="dead" />
-            <MetricCard label="Zombies" value={latest.zombies} percent={latestPercentages?.zombies}
-              tone="zombies" quiet={latest.zombies === 0} />
+            <MetricCard label="Healthy" value={metrics.healthy} percent={percentages?.healthy} tone="healthy" />
+            <MetricCard label="Infected" value={metrics.infected} percent={percentages?.infected} tone="infected" />
+            <MetricCard label="Dead" value={metrics.dead} percent={percentages?.dead} tone="dead" />
+            <MetricCard label="Zombies" value={metrics.zombies} percent={percentages?.zombies}
+              tone="zombies" quiet={metrics.zombies === 0} />
           </div>
         </section>
+      </>}
+      {history.length > 0 && <>
         <section className="surface chart-panel" aria-label="Global history chart panel">
           <div className="panel-heading"><div><span className="eyebrow">GLOBAL HISTORY</span>
             <h2>Population over time</h2></div><span className="panel-meta">{history.length} observed days · game day axis</span></div>
           <Suspense fallback={<div className="chart-loading">Loading chart…</div>}>
-            <HistoryChart history={history} />
+            <HistoryChart history={history} selectedDay={replay.day} />
           </Suspense>
         </section>
         <details className="surface observations"><summary>Recent daily observations</summary>
@@ -137,21 +173,23 @@ export function HistoryDashboard({ sessions, session, global, countries, country
           {countries.status === 'success' && <CountrySelector key={sessionId} countries={availableCountries}
             selectedId={countryId} onChange={onCountryChange} controlId="history-country" />}
         </section>
-        {country.status === 'loading' && <EmptyState title="Loading country data" detail="Reading saved observations…" />}
-        {country.status === 'error' && <EmptyState title="Country history unavailable" detail={country.error.message} tone="error" />}
-        {country.status === 'empty' && <EmptyState title="No country data available"
-          detail="No observations were saved for this country in the selected session." />}
-        {latestCountry && countryId && <CountryOverview id={countryId} country={latestCountry}
-          context={`Latest saved day ${latestCountry.day} · ${latestCountry.gameDate}`} />}
-        {country.status === 'idle' && countries.status === 'success' && <EmptyState title="Choose a country"
-          detail="Select a country to see its latest saved state and history." />}
+        {snapshot && countryId && selectedCountry && <CountryOverview id={countryId} country={selectedCountry}
+          context={`Saved day ${snapshot.day} · ${snapshot.gameDate}`} />}
+        {snapshot && countryId && !selectedCountry && <EmptyState title="No country data on this day"
+          detail={`${formatCountryName(countryId)} is absent from this saved snapshot.`} />}
+        {replay.snapshot.status === 'loading' && <EmptyState title="Loading country state"
+          detail="Reading the selected day…" />}
+        {countries.status === 'success' && !countryId && <EmptyState title="Choose a country"
+          detail="Select a country to see its saved state and history." />}
       </div>
+      {country.status === 'loading' && <p className="inline-state">Loading country history…</p>}
+      {country.status === 'error' && <p className="inline-state error-text" role="alert">{country.error.message}</p>}
       {countryHistory.length > 0 && countryId && <section className="surface chart-panel" aria-label="Country history chart panel">
         <div className="panel-heading"><div><span className="eyebrow">COUNTRY HISTORY</span>
           <h2>Spread in {formatCountryName(countryId)}</h2></div>
           <span className="panel-meta">{countryHistory.length} observed days · game day axis</span></div>
         <Suspense fallback={<div className="chart-loading">Loading chart…</div>}>
-          <CountryHistoryChart history={countryHistory} />
+          <CountryHistoryChart history={countryHistory} selectedDay={replay.day} />
         </Suspense>
       </section>}
     </>}

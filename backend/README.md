@@ -70,6 +70,7 @@ same-origin Vite development proxy.
 | `GET /sessions` | Newest-first session summaries with snapshot count and first/last game dates |
 | `GET /sessions/:sessionId` | One session's metadata and date range |
 | `GET /sessions/:sessionId/history` | `{ sessionId, history }` with global sums per observed day, no country arrays |
+| `GET /sessions/:sessionId/days/:day` | Full saved snapshot for an observed day: session ID, global fields and countries in `country_index` order |
 | `GET /sessions/:sessionId/countries` | `{ sessionId, countries: [{ id, index }] }`, raw IDs ordered by country index; empty for a session with no saved country rows |
 | `GET /sessions/:sessionId/countries/:countryId/history` | `{ sessionId, countryId, history }` for the raw country ID |
 
@@ -83,6 +84,8 @@ $sessions = @(Invoke-RestMethod "$base/sessions")
 $id = $sessions[0].id
 Invoke-RestMethod "$base/sessions/$id"
 Invoke-RestMethod "$base/sessions/$id/history"
+$day = (Invoke-RestMethod "$base/sessions/$id/history").history[-1].day
+Invoke-RestMethod "$base/sessions/$id/days/$day"
 Invoke-RestMethod "$base/sessions/$id/countries"
 Invoke-RestMethod "$base/sessions/$id/countries/soudi_arabia/history"
 ```
@@ -94,6 +97,9 @@ and contain only actually observed days; gaps are not interpolated. Country
 IDs such as `soudi_arabia` are not renamed. An unknown session returns 404
 (`SESSION_NOT_FOUND`); an existing session without snapshots returns an empty
 country list. An unknown country history returns 404 (`COUNTRY_NOT_FOUND`).
+The full-day route returns 404 (`SNAPSHOT_NOT_FOUND`) for an unobserved day and
+400 (`INVALID_DAY`) unless `day` is a non-negative safe integer. It does not
+substitute a nearby day. Saved country values are returned unchanged.
 All API errors have `{ "error": { "code": "...", "message": "..." } }`;
 unexpected errors are logged server-side and do not expose stack traces.
 

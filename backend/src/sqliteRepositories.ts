@@ -189,6 +189,13 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
     return row ? this.hydrate(row) : null;
   }
 
+  getByDay(sessionId: string, day: number): HistoricalSnapshot | null {
+    const row = this.db.prepare<[string, number], DailyRow>(`
+      SELECT * FROM daily_snapshots WHERE session_id = ? AND day = ?
+    `).get(sessionId, day);
+    return row ? this.hydrate(row) : null;
+  }
+
   getSessionStats(sessionId?: string): SessionStats[] {
     const query = `
       SELECT s.id AS session_id, COUNT(d.day) AS snapshot_count,

@@ -96,10 +96,38 @@ test('session and one day persist all 58 countries in original index and raw-id 
   assert.equal(rowCount(store.db, 'daily_snapshots'), 1);
   assert.equal(rowCount(store.db, 'country_snapshots'), 58);
   assert.deepEqual(snapshots.getLatestForSession('game-a'), historical('game-a', 10));
+  assert.deepEqual(snapshots.getByDay('game-a', 10), historical('game-a', 10));
+  assert.equal(snapshots.getByDay('game-a', 11), null);
   assert.deepEqual(snapshots.list('game-a')[0]!.countries.map((country) => country.index),
     Array.from({ length: 58 }, (_, index) => index));
   assert.deepEqual(snapshots.list('game-a')[0]!.countries.slice(0, 4).map((country) => country.id),
     ['soudi_arabia', 'morroco', 'philipines', 'balcan_states']);
+});
+
+test('full day SQLite read uses one global and one ordered country query', (t) => {
+  const store = temporaryDatabase(t);
+  const sessions = new SqliteSessionRepository(store.db);
+  sessions.save(session('game-a', 10));
+  new SqliteSnapshotRepository(store.db).save(historical('game-a', 10));
+  const queries: string[] = [];
+  const traced = new Proxy(store.db, {
+    get(target, property, receiver) {
+      if (property === 'prepare') return (sql: string) => {
+        queries.push(sql);
+        return target.prepare(sql);
+      };
+      return Reflect.get(target, property, receiver);
+    },
+  }) as Database.Database;
+  const repository = new SqliteSnapshotRepository(traced);
+  const result = repository.getByDay('game-a', 10);
+  assert.equal(result?.countries.length, 58);
+  assert.equal(queries.length, 2);
+  assert.match(queries[0]!, /daily_snapshots/);
+  assert.match(queries[1]!, /country_snapshots[\s\S]*ORDER BY country_index/);
+  queries.length = 0;
+  assert.equal(repository.getByDay('game-a', 11), null);
+  assert.equal(queries.length, 1);
 });
 
 test('SQLite lists unique session countries in index order with raw IDs', (t) => {

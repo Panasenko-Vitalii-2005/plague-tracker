@@ -32,6 +32,14 @@ function routeId(value: unknown, name: string): string {
   return value;
 }
 
+function routeDay(value: unknown): number {
+  if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value)
+    || !Number.isSafeInteger(Number(value))) {
+    throw new ApiError(400, 'INVALID_DAY', 'Invalid day');
+  }
+  return Number(value);
+}
+
 function sessionMetadata(session: GameSession, snapshotCount: number) {
   return {
     ...session,
@@ -148,6 +156,20 @@ export function buildApi(dependencies: ApiDependencies): FastifyInstance {
       throw new ApiError(404, 'SESSION_NOT_FOUND', 'Session not found');
     }
     return { sessionId, history: await snapshots.getGlobalHistory(sessionId) };
+  });
+
+  app.get('/api/v1/sessions/:sessionId/days/:day', async (request) => {
+    const params = request.params as Record<string, unknown>;
+    const sessionId = routeId(params.sessionId, 'sessionId');
+    const day = routeDay(params.day);
+    const snapshot = await snapshots.getByDay(sessionId, day);
+    if (!snapshot) {
+      if (!await sessions.getById(sessionId)) {
+        throw new ApiError(404, 'SESSION_NOT_FOUND', 'Session not found');
+      }
+      throw new ApiError(404, 'SNAPSHOT_NOT_FOUND', 'Snapshot not found');
+    }
+    return snapshot;
   });
 
   app.get('/api/v1/sessions/:sessionId/countries', async (request) => {

@@ -4,9 +4,10 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { LiveGameView } from '../src/api/liveStore.ts'
-import type { CountryHistoryResponse, SessionCountriesResponse, SessionDetails,
+import type { CountryHistoryResponse, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
   SessionHistoryResponse, SessionSummary } from '../src/api/types.ts'
 import type { Resource } from '../src/hooks/useHistory.ts'
+import type { HistoricalReplay } from '../src/hooks/useReplay.ts'
 
 let server: ViteDevServer
 let MetricCard: typeof import('../src/components/MetricCard.tsx').MetricCard
@@ -25,6 +26,11 @@ after(async () => { await server?.close() })
 
 const loaded = <T>(data: T): Resource<T> => ({ status: 'success', data, error: null, reload: () => {} })
 const idle = <T>(): Resource<T> => ({ status: 'idle', data: null, error: null, reload: () => {} })
+const replay = (snapshot: HistoricalSnapshot | null, day: number | null): HistoricalReplay => ({
+  days: [10, 13], day, index: day === 10 ? 0 : 1,
+  snapshot: snapshot ? loaded(snapshot) : idle(), isPlaying: false,
+  selectIndex: () => {}, previous: () => {}, next: () => {}, togglePlay: () => {}, reset: () => {},
+})
 
 test('metric card and cure indicator format only their presentation', () => {
   const card = renderToStaticMarkup(createElement(MetricCard,
@@ -85,8 +91,13 @@ test('history dashboard renders saved session, global values and historical coun
     { capturedAt: '2026-09-23T00:01:00Z', day: 13, gameDate: '2026-01-13', originalPopulation: 100,
       currentPopulation: 90, healthyPopulation: 70, infected: 20, deadPopulation: 10, zombies: 0 },
   ] })
+  const selected: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:01:00Z',
+    day: 13, gameDate: '2026-01-13', diseaseTurn: 12, eventTurn: 13, cureProgress: 12.3456,
+    countries: [{ index: 1, id: 'south_africa', originalPopulation: 100, currentPopulation: 90,
+      healthyPopulation: 60, infected: 30, deadPopulation: 10, zombies: 0 }] }
   const html = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global, countries, country,
-    sessionId: summary.id, onSessionChange: () => {}, preferredCountryId: 'south_africa', onCountryChange: () => {} }))
+    replay: replay(selected, 13), sessionId: summary.id, onSessionChange: () => {},
+    preferredCountryId: 'south_africa', onCountryChange: () => {} }))
   assert.match(html, /Session history/)
   assert.match(html, /Open session/)
   assert.match(html, /2026-01-13/)
@@ -94,13 +105,33 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(html, /Population over time/)
   assert.match(html, /value="south_africa"/)
   assert.match(html, /Spread in South Africa/)
-  assert.match(html, /Latest saved day 13/)
+  assert.match(html, /Saved day 13/)
+  assert.match(html, /30,00% of original population/)
+  assert.match(html, /Original population/)
+  assert.match(html, /Historical replay timeline/)
   assert.doesNotMatch(html, /day 11/i)
+
+  const prior: HistoricalSnapshot = { ...selected, day: 10, gameDate: '2026-01-10', cureProgress: 2,
+    countries: [{ ...selected.countries[0]!, healthyPopulation: 95, infected: 5 }] }
+  const priorHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,
+    countries, country, replay: replay(prior, 10), sessionId: summary.id, onSessionChange: () => {},
+    preferredCountryId: 'south_africa', onCountryChange: () => {} }))
+  assert.match(priorHtml, /Saved day 10/)
+  assert.match(priorHtml, /2026-01-10/)
+  assert.match(priorHtml, /2,00%/)
+  assert.match(priorHtml, /5,00% of original population/)
+  assert.doesNotMatch(priorHtml, /30,00% of original population/)
+
+  const absentHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,
+    countries, country, replay: replay({ ...selected, countries: [] }, 13), sessionId: summary.id,
+    onSessionChange: () => {}, preferredCountryId: 'south_africa', onCountryChange: () => {} }))
+  assert.match(absentHtml, /No country data on this day/)
 })
 
 test('history dashboard gives a distinct empty-session state', () => {
   const html = renderToStaticMarkup(createElement(HistoryDashboard, { sessions: { status: 'empty', data: [],
     error: null, reload: () => {} }, session: idle(), global: idle(), countries: idle(), country: idle(),
+    replay: replay(null, null),
     sessionId: '', onSessionChange: () => {}, preferredCountryId: null, onCountryChange: () => {} }))
   assert.match(html, /No saved sessions/)
 })

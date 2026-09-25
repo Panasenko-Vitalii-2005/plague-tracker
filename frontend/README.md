@@ -34,7 +34,12 @@ React subscriber unmounts.
 The dashboard uses a dark desktop-first layout with day/date/session summary,
 global population cards, cure indicator, and searchable country details. LIVE
 shows only the latest SSE snapshot; its historical charts intentionally live in
-HISTORY, which reads observed daily points through REST. Chart X values are
+HISTORY, which reads observed daily points through REST. HISTORY selects the
+last observed day when a session is chosen. Previous, Next, slider and Play
+move through saved days only; a gap never creates a synthetic snapshot. A full
+snapshot request supplies the selected day's global and country state, while
+both charts retain the whole session and mark the selected day. Playback stops
+at the last observation, and manual navigation pauses it. Chart X values are
 authoritative game days, so missing days are not interpolated. Population
 percentages are presentation-only and use original population as denominator.
 

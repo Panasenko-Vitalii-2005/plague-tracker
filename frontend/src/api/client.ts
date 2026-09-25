@@ -1,9 +1,11 @@
 import { apiUrl } from './config.ts'
 import {
-  parseCountryHistory, parseLiveState, parseSessionCountries, parseSessionDetails, parseSessionHistory, parseSessions,
+  parseCountryHistory, parseHistoricalSnapshot, parseLiveState, parseSessionCountries, parseSessionDetails,
+  parseSessionHistory, parseSessions,
 } from './parse.ts'
 import type {
-  CountryHistoryResponse, LiveState, SessionCountriesResponse, SessionDetails, SessionHistoryResponse, SessionSummary,
+  CountryHistoryResponse, HistoricalSnapshot, LiveState, SessionCountriesResponse, SessionDetails,
+  SessionHistoryResponse, SessionSummary,
 } from './types.ts'
 
 export class ApiError extends Error {
@@ -80,6 +82,9 @@ export const getSession = (id: string, signal?: AbortSignal): Promise<SessionDet
 
 export const getSessionHistory = (id: string, signal?: AbortSignal): Promise<SessionHistoryResponse> =>
   request(`sessions/${encodeURIComponent(id)}/history`, parseSessionHistory, signal)
+
+export const getHistoricalSnapshot = (sessionId: string, day: number, signal?: AbortSignal): Promise<HistoricalSnapshot> =>
+  request(`sessions/${encodeURIComponent(sessionId)}/days/${day}`, parseHistoricalSnapshot, signal)
 
 export const getSessionCountries = (id: string, signal?: AbortSignal): Promise<SessionCountriesResponse> =>
   request(`sessions/${encodeURIComponent(id)}/countries`, parseSessionCountries, signal)
