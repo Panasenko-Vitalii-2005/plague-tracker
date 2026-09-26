@@ -2,6 +2,7 @@ import type { CountrySnapshot } from '../api/types.ts'
 import { formatCountryName } from '../domain/countries.ts'
 import { countryStatusComposition } from '../domain/countryDonut.ts'
 import { formatPopulation } from '../domain/format.ts'
+import { CountryGovernmentActions, CountryResearch } from './CountryResearch.tsx'
 
 const sliceColors = {
   Healthy: 'var(--healthy)',
@@ -54,6 +55,8 @@ function CountryCard({ country }: { country: CountrySnapshot }) {
       </dl>
       <CountryDonut country={country} />
     </div>
+    <CountryResearch cureResearch={country.cureResearch} />
+    <CountryGovernmentActions actions={country.governmentActions} />
   </article>
 }
 

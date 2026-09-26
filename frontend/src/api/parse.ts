@@ -1,5 +1,5 @@
 import type {
-  CollectorStatus, CountryHistoryPoint, CountryHistoryResponse, CountrySnapshot,
+  CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountrySnapshot,
   GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
@@ -31,6 +31,18 @@ function number(value: unknown, label: string): number {
   return value
 }
 
+function integer(value: unknown, label: string): number {
+  const parsed = number(value, label)
+  if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid ${label}: expected integer`)
+  return parsed
+}
+
+function nonNegativeInteger(value: unknown, label: string): number {
+  const parsed = integer(value, label)
+  if (parsed < 0) throw new Error(`Invalid ${label}: expected non-negative integer`)
+  return parsed
+}
+
 function nullableString(value: unknown, label: string): string | null {
   return value === null ? null : string(value, label)
 }
@@ -47,6 +59,7 @@ export function parseCollectorStatus(value: unknown): CollectorStatus {
 
 function parseCountry(value: unknown): CountrySnapshot {
   const data = record(value, 'country')
+  const cureResearch = data.cureResearch === null ? null : parseCureResearch(data.cureResearch)
   return {
     index: number(data.index, 'country.index'),
     id: string(data.id, 'country.id'),
@@ -56,6 +69,29 @@ function parseCountry(value: unknown): CountrySnapshot {
     deadPopulation: number(data.deadPopulation, 'country.deadPopulation'),
     infected: number(data.infected, 'country.infected'),
     zombies: number(data.zombies, 'country.zombies'),
+    governmentActions: array(data.governmentActions, 'country.governmentActions').map((value) => {
+      const action = record(value, 'country.governmentActions event')
+      return { id: string(action.id, 'government action.id'), turn: integer(action.turn, 'government action.turn'),
+        removed: boolean(action.removed, 'government action.removed') }
+    }),
+    cureResearch,
+  }
+}
+
+function parseCureResearch(value: unknown): CountryCureResearch {
+  const data = record(value, 'country.cureResearch')
+  const flasks = record(data.flasks, 'country.cureResearch.flasks')
+  const rank = data.rank === null ? null : integer(data.rank, 'country.cureResearch.rank')
+  if (rank !== null && rank < 1) throw new Error('Invalid country.cureResearch.rank: expected positive integer')
+  return {
+    funding: number(data.funding, 'country.cureResearch.funding'),
+    allocation: number(data.allocation, 'country.cureResearch.allocation'),
+    rank,
+    flasks: {
+      active: nonNegativeInteger(flasks.active, 'country.cureResearch.flasks.active'),
+      inactive: nonNegativeInteger(flasks.inactive, 'country.cureResearch.flasks.inactive'),
+      destroyed: nonNegativeInteger(flasks.destroyed, 'country.cureResearch.flasks.destroyed'),
+    },
   }
 }
 

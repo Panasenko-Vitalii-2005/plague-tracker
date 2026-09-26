@@ -7,6 +7,9 @@ import { parseHistoricalSnapshot, parseLiveState, parseSessionCountries, parseSe
 const country = {
   index: 2, id: 'soudi_arabia', currentPopulation: 90, originalPopulation: 100,
   healthyPopulation: 70, deadPopulation: 5, infected: 20, zombies: 1,
+  governmentActions: [{ id: 'research_funding_2', turn: 14, removed: false }],
+  cureResearch: { funding: 1564.9822, allocation: 0.2, rank: 9,
+    flasks: { active: 2, inactive: 6, destroyed: 0 } },
 }
 const snapshot = {
   capturedAt: '2026-09-23T00:00:00Z', day: 10, gameDate: '2026-10-03',
@@ -61,6 +64,29 @@ test('full historical snapshot parser validates every field and keeps raw countr
   }
   assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
     countries: [{ ...country, infected: '20' }] }), /country.infected/)
+})
+
+test('live and historical parsers retain government actions and cure research, including legacy null', () => {
+  const live = parseLiveState({ collector: { running: true, lastError: null }, session: null, snapshot })
+  assert.deepEqual(live.snapshot?.countries[0]?.governmentActions, country.governmentActions)
+  assert.deepEqual(live.snapshot?.countries[0]?.cureResearch, country.cureResearch)
+
+  const legacyCountry = { ...country, governmentActions: [], cureResearch: null }
+  const historical = parseHistoricalSnapshot({ sessionId: 'old-session', ...snapshot, countries: [legacyCountry] })
+  assert.deepEqual(historical.countries[0]?.governmentActions, [])
+  assert.equal(historical.countries[0]?.cureResearch, null)
+
+  for (const invalid of [
+    { governmentActions: null },
+    { governmentActions: [{ id: 'unknown', turn: 1.5, removed: false }] },
+    { governmentActions: [{ id: 'unknown', turn: 1, removed: 'false' }] },
+    { cureResearch: { ...country.cureResearch, rank: 0 } },
+    { cureResearch: { ...country.cureResearch, flasks: { active: -1, inactive: 6, destroyed: 0 } } },
+    { cureResearch: { ...country.cureResearch, funding: '1564' } },
+  ]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      countries: [{ ...country, ...invalid }] }))
+  }
 })
 
 test('full historical snapshot client requests the observed day', async () => {

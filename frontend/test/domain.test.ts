@@ -4,14 +4,17 @@ import { mapCountryHistoryToChart, mapGlobalHistoryToChart } from '../src/domain
 import { formatCountryName, resolveSessionCountry } from '../src/domain/countries.ts'
 import { countryOverview, globalPercentages, liveStatus, percentageOf, shortSessionId } from '../src/domain/dashboard.ts'
 import { formatAxisPopulation, formatPercent, formatPopulation } from '../src/domain/format.ts'
+import { formatGovernmentAction, formatResearchAllocation, formatResearchBudget } from '../src/domain/countryResearch.ts'
 import { aggregateCountries } from '../src/domain/metrics.ts'
 
 test('global live metrics are sums, independent of currentPopulation semantics', () => {
   const values = aggregateCountries([
     { index: 0, id: 'morroco', currentPopulation: 999, originalPopulation: 100,
-      healthyPopulation: 70, infected: 20, deadPopulation: 5, zombies: 1 },
+      healthyPopulation: 70, infected: 20, deadPopulation: 5, zombies: 1,
+      governmentActions: [], cureResearch: null },
     { index: 1, id: 'philipines', currentPopulation: 1, originalPopulation: 200,
-      healthyPopulation: 100, infected: 50, deadPopulation: 30, zombies: 4 },
+      healthyPopulation: 100, infected: 50, deadPopulation: 30, zombies: 4,
+      governmentActions: [], cureResearch: null },
   ])
   assert.deepEqual(values, { healthy: 170, infected: 70, dead: 35, zombies: 5, originalPopulation: 300 })
 })
@@ -64,6 +67,15 @@ test('shared formatters use grouped populations and two-decimal cure', () => {
   assert.equal(formatPopulation(12_300_000), '12 300 000')
   assert.equal(formatPercent(25.51), '25,51%')
   assert.equal(formatAxisPopulation(1_200_000), '1.2M')
+})
+
+test('research formatting keeps numeric precision and accepts unknown raw action IDs', () => {
+  assert.equal(formatResearchBudget(1564.9822), '$1,564.98')
+  assert.equal(formatResearchAllocation(0.2), '20%')
+  assert.equal(formatResearchAllocation(0.12345), '12.35%')
+  assert.equal(formatGovernmentAction('infectious_disease_teams__mobilised'),
+    'Infectious Disease Teams Mobilised')
+  assert.equal(formatGovernmentAction('  urban_evacuation_ordered  '), 'Urban Evacuation Ordered')
 })
 
 test('historical session switch only selects a country present in the new REST list', () => {

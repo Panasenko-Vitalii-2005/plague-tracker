@@ -1,0 +1,57 @@
+.country-research {
+  min-width: 0;
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.country-research h4 {
+  margin: 0 0 11px;
+  color: var(--cure);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.country-research-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.country-research-metrics > div { min-width: 0; }
+.country-research-metrics dt { color: var(--muted); font-size: 10px; }
+.country-research-metrics dd {
+  margin: 5px 0 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.country-research-unavailable,
+.country-actions-empty,
+.research-flask-counts { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+
+.research-flasks { display: flex; flex-wrap: wrap; gap: 5px; min-height: 26px; margin-top: 12px; }
+.research-flask { width: 20px; height: 24px; flex: none; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.research-flask.is-active { color: var(--cure); stroke: currentColor; }
+.research-flask.is-active .research-flask-fill { fill: currentColor; stroke: none; }
+.research-flask.is-inactive { color: var(--muted); stroke: currentColor; opacity: .65; }
+.research-flask.is-destroyed { color: var(--dead); stroke: currentColor; opacity: .75; }
+.research-flask-break { stroke-width: 2.1; }
+.research-flask-counts { margin-top: 5px; }
+
+.country-actions,
+.country-actions-empty { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--border); }
+.country-actions summary { color: var(--muted-strong); font-size: 11px; font-weight: 700; cursor: pointer; }
+.country-actions summary span { color: var(--muted); }
+.country-actions-list { max-height: 240px; overflow-y: auto; margin: 10px 0 0; padding: 0; list-style: none; }
+.country-actions-list li { display: grid; gap: 3px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 11px; }
+.country-actions-list li > span { overflow-wrap: anywhere; }
+.country-actions-list small { color: var(--muted); font-size: 10px; }
+.country-actions-list li.is-removed > span { color: var(--muted); text-decoration: line-through; }
+.country-actions-list li.is-removed em { color: var(--dead); font-style: normal; }

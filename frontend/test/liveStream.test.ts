@@ -23,7 +23,8 @@ class FakeEventSource implements EventSourceLike {
 }
 
 const country = { index: 0, id: 'balcan_states', currentPopulation: 10,
-  originalPopulation: 20, healthyPopulation: 5, deadPopulation: 1, infected: 4, zombies: 0 }
+  originalPopulation: 20, healthyPopulation: 5, deadPopulation: 1, infected: 4, zombies: 0,
+  governmentActions: [], cureResearch: null }
 const snapshot = { capturedAt: '2026-09-23T00:00:00Z', day: 5, gameDate: '2026-09-28',
   diseaseTurn: 5, eventTurn: 6, cureProgress: 2, countries: [country] }
 
