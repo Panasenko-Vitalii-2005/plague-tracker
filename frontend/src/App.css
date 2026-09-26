@@ -184,3 +184,81 @@ h2 { font-size: 19px; letter-spacing: -.025em; line-height: 1.25; }
   .summary-item { padding: 15px; }
   .country-pick-panel, .country-overview, .chart-panel { padding: 17px; }
 }
+
+.country-region-list {
+  display: grid;
+  gap: 12px;
+}
+
+.country-region {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.country-region-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.country-region-summary::-webkit-details-marker {
+  display: none;
+}
+
+.country-region-summary::after {
+  content: "\203A";
+  margin-left: 4px;
+  color: var(--muted-strong);
+  font-size: 28px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+}
+
+.country-region[open] > .country-region-summary::after {
+  transform: rotate(90deg);
+}
+
+.country-region-summary:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.country-region-summary h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.country-region-meta {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.country-region-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 0 18px 18px;
+}
+
+@media (max-width: 1400px) {
+  .country-region-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1050px) {
+  .country-region-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .country-region-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
