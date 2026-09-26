@@ -25,6 +25,7 @@ function snapshot(day: number, revision = 1): GameSnapshot {
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
       infected: 10, deadPopulation: 0, zombies: 0,
+      governmentActions: [], cureResearch: null,
     }],
   };
 }

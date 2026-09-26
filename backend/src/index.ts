@@ -18,6 +18,8 @@ export type { SessionRepository, SnapshotRepository, RepositoryResult } from './
 export type { SpawnCollector, CollectorLogger } from './PlagueCollectorProcess.js';
 export type {
   CountrySnapshot,
+  GovernmentActionEvent,
+  CountryCureResearch,
   GameSnapshot,
   GameSession,
   HistoricalSnapshot,

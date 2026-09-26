@@ -50,6 +50,8 @@ function snapshot(day: number, revision = 1, countryCount = 58): GameSnapshot {
       deadPopulation: 0,
       infected: revision,
       zombies: 0,
+      governmentActions: [],
+      cureResearch: null,
     })),
   };
 }
@@ -75,7 +77,7 @@ test('database path config, migrations, foreign keys and WAL', (t) => {
   assert.equal(store.db.pragma('foreign_keys', { simple: true }), 1);
   assert.equal(store.db.pragma('journal_mode', { simple: true }), 'wal');
   assert.deepEqual(store.db.prepare<[], { version: number }>('SELECT version FROM schema_migrations').all(),
-    [{ version: 1 }]);
+    [{ version: 1 }, { version: 2 }]);
   assert.ok(existsSync(store.databasePath));
   store.reopen();
   assert.equal(rowCount(store.db, 'game_sessions'), 0);
@@ -104,7 +106,7 @@ test('session and one day persist all 58 countries in original index and raw-id 
     ['soudi_arabia', 'morroco', 'philipines', 'balcan_states']);
 });
 
-test('full day SQLite read uses one global and one ordered country query', (t) => {
+test('full day SQLite read uses one global, one country and one action query', (t) => {
   const store = temporaryDatabase(t);
   const sessions = new SqliteSessionRepository(store.db);
   sessions.save(session('game-a', 10));
@@ -122,9 +124,10 @@ test('full day SQLite read uses one global and one ordered country query', (t) =
   const repository = new SqliteSnapshotRepository(traced);
   const result = repository.getByDay('game-a', 10);
   assert.equal(result?.countries.length, 58);
-  assert.equal(queries.length, 2);
+  assert.equal(queries.length, 3);
   assert.match(queries[0]!, /daily_snapshots/);
   assert.match(queries[1]!, /country_snapshots[\s\S]*ORDER BY country_index/);
+  assert.match(queries[2]!, /government_action_events[\s\S]*ORDER BY country_id, event_index/);
   queries.length = 0;
   assert.equal(repository.getByDay('game-a', 11), null);
   assert.equal(queries.length, 1);

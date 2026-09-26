@@ -3,6 +3,7 @@ import type {
   HistoricalSnapshot, SessionStats,
   SessionCountry,
 } from './types.js';
+import { withCureRanks } from './cureRanks.js';
 
 export type RepositoryResult<T> = T | Promise<T>;
 
@@ -28,7 +29,11 @@ export interface SnapshotRepository {
 export function copySnapshot(snapshot: GameSnapshot): GameSnapshot {
   return {
     ...snapshot,
-    countries: snapshot.countries.map((country) => ({ ...country })),
+    countries: withCureRanks(snapshot.countries.map((country) => ({ ...country,
+      governmentActions: (country.governmentActions ?? []).map((action) => ({ ...action })),
+      cureResearch: country.cureResearch ? { ...country.cureResearch,
+        flasks: { ...country.cureResearch.flasks } } : null,
+    }))),
   };
 }
 

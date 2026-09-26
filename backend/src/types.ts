@@ -7,6 +7,21 @@ export interface CountrySnapshot {
   deadPopulation: number;
   infected: number;
   zombies: number;
+  governmentActions: GovernmentActionEvent[];
+  cureResearch: CountryCureResearch | null;
+}
+
+export interface GovernmentActionEvent {
+  id: string;
+  turn: number;
+  removed: boolean;
+}
+
+export interface CountryCureResearch {
+  funding: number;
+  allocation: number;
+  rank: number | null;
+  flasks: { active: number; inactive: number; destroyed: number };
 }
 
 export interface GameSnapshot {

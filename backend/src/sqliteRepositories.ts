@@ -5,6 +5,7 @@ import type {
   SessionCountry,
 } from './types.js';
 import type { SessionRepository, SnapshotRepository } from './repositories.js';
+import { withCureRanks } from './cureRanks.js';
 
 interface SessionRow {
   id: string;
@@ -33,6 +34,18 @@ interface CountryRow {
   dead_population: number;
   infected: number;
   zombies: number;
+  cure_funding: number | null;
+  cure_allocation: number | null;
+  flask_active: number | null;
+  flask_inactive: number | null;
+  flask_destroyed: number | null;
+}
+
+interface GovernmentActionRow {
+  country_id: string;
+  action_id: string;
+  turn: number;
+  removed: number;
 }
 
 interface SessionStatsRow {
@@ -87,6 +100,12 @@ function countryFromRow(row: CountryRow): CountrySnapshot {
     deadPopulation: row.dead_population,
     infected: row.infected,
     zombies: row.zombies,
+    governmentActions: [],
+    cureResearch: row.cure_funding === null || row.cure_allocation === null
+      || row.flask_active === null || row.flask_inactive === null || row.flask_destroyed === null
+      ? null : { funding: row.cure_funding, allocation: row.cure_allocation, rank: null,
+        flasks: { active: row.flask_active, inactive: row.flask_inactive,
+          destroyed: row.flask_destroyed } },
   };
 }
 
@@ -148,8 +167,14 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
     const insertCountry = this.db.prepare(`
       INSERT INTO country_snapshots
         (session_id, day, country_id, country_index, current_population,
-         original_population, healthy_population, dead_population, infected, zombies)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         original_population, healthy_population, dead_population, infected, zombies,
+         cure_funding, cure_allocation, flask_active, flask_inactive, flask_destroyed)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertAction = this.db.prepare(`
+      INSERT INTO government_action_events
+        (session_id, day, country_id, event_index, action_id, turn, removed)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.db.transaction(() => {
@@ -164,7 +189,15 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
           country.currentPopulation, country.originalPopulation,
           country.healthyPopulation, country.deadPopulation,
           country.infected, country.zombies,
+          country.cureResearch?.funding ?? null, country.cureResearch?.allocation ?? null,
+          country.cureResearch?.flasks.active ?? null,
+          country.cureResearch?.flasks.inactive ?? null,
+          country.cureResearch?.flasks.destroyed ?? null,
         );
+        for (const [index, action] of (country.governmentActions ?? []).entries()) {
+          insertAction.run(snapshot.sessionId, snapshot.day, country.id, index,
+            action.id, action.turn, action.removed ? 1 : 0);
+        }
       }
     })();
   }
@@ -286,6 +319,15 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
       SELECT * FROM country_snapshots
       WHERE session_id = ? AND day = ? ORDER BY country_index
     `).all(row.session_id, row.day).map(countryFromRow);
+    const byId = new Map(countries.map((country) => [country.id, country]));
+    const actions = this.db.prepare<[string, number], GovernmentActionRow>(`
+      SELECT country_id, action_id, turn, removed FROM government_action_events
+      WHERE session_id = ? AND day = ? ORDER BY country_id, event_index
+    `).all(row.session_id, row.day);
+    for (const action of actions) {
+      byId.get(action.country_id)?.governmentActions.push({ id: action.action_id,
+        turn: action.turn, removed: action.removed === 1 });
+    }
     return {
       sessionId: row.session_id,
       capturedAt: row.captured_at,
@@ -294,7 +336,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
       diseaseTurn: row.disease_turn,
       eventTurn: row.event_turn,
       cureProgress: row.cure_progress,
-      countries,
+      countries: withCureRanks(countries),
     };
   }
 }

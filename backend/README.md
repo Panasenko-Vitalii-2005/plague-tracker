@@ -100,6 +100,15 @@ country list. An unknown country history returns 404 (`COUNTRY_NOT_FOUND`).
 The full-day route returns 404 (`SNAPSHOT_NOT_FOUND`) for an unobserved day and
 400 (`INVALID_DAY`) unless `day` is a non-negative safe integer. It does not
 substitute a nearby day. Saved country values are returned unchanged.
+Each live and full-day country contains `governmentActions: [{ id, turn,
+removed }]` and `cureResearch: { funding, allocation, rank, flasks: { active,
+inactive, destroyed } } | null`. Action IDs are raw and never whitelisted.
+Schema migration 2 stores action events in list order and nullable cure values
+on each saved country/day. Older rows return `governmentActions: []` and
+`cureResearch: null`. Rank is derived for that day's positive funding values;
+equal funding uses country index, and any missing cure contribution leaves
+ranks null rather than guessing. The live API uses the current snapshot, while
+the full-day route uses only values saved for the requested day.
 All API errors have `{ "error": { "code": "...", "message": "..." } }`;
 unexpected errors are logged server-side and do not expose stack traces.
 

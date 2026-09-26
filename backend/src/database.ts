@@ -53,6 +53,29 @@ const migrations = [
       );
     `,
   },
+  {
+    version: 2,
+    sql: `
+      ALTER TABLE country_snapshots ADD COLUMN cure_funding REAL;
+      ALTER TABLE country_snapshots ADD COLUMN cure_allocation REAL;
+      ALTER TABLE country_snapshots ADD COLUMN flask_active INTEGER;
+      ALTER TABLE country_snapshots ADD COLUMN flask_inactive INTEGER;
+      ALTER TABLE country_snapshots ADD COLUMN flask_destroyed INTEGER;
+
+      CREATE TABLE government_action_events (
+        session_id TEXT NOT NULL,
+        day INTEGER NOT NULL,
+        country_id TEXT NOT NULL,
+        event_index INTEGER NOT NULL,
+        action_id TEXT NOT NULL,
+        turn INTEGER NOT NULL,
+        removed INTEGER NOT NULL CHECK (removed IN (0, 1)),
+        PRIMARY KEY (session_id, day, country_id, event_index),
+        FOREIGN KEY (session_id, day, country_id)
+          REFERENCES country_snapshots(session_id, day, country_id) ON DELETE CASCADE
+      );
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {

@@ -26,6 +26,8 @@ function snapshot(
       deadPopulation: 0,
       infected: revision,
       zombies: 0,
+      governmentActions: [],
+      cureResearch: null,
     }],
   };
 }

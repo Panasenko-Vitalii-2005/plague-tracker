@@ -31,6 +31,8 @@ function snapshot(turn = 10, id = 'soudi_arabia'): GameSnapshot {
       deadPopulation: 0,
       infected: 10,
       zombies: 0,
+      governmentActions: [],
+      cureResearch: null,
     }],
   };
 }
@@ -88,6 +90,26 @@ test('valid snapshot updates latest and notifies subscribers with raw id', async
   assert.equal(received[0]!.countries[0]!.id, 'soudi_arabia');
   assert.equal(consumer.getLatestSnapshot()?.capturedAt, snapshot().capturedAt);
   assert.equal(consumer.getStatus().lastDiseaseTurn, 10);
+  await consumer.stop();
+});
+
+test('collector NDJSON carries government events and cure fields into latest snapshot', async () => {
+  const { consumer, children } = fixture();
+  await consumer.start();
+  const input = snapshot();
+  input.countries[0]!.governmentActions = [
+    { id: 'research_funding_10', turn: 9, removed: false },
+    { id: 'infectious_disease_teams__mobilised', turn: 10, removed: true },
+  ];
+  input.countries[0]!.cureResearch = { funding: 3188.2, allocation: 0.4, rank: 99,
+    flasks: { active: 4, inactive: 3, destroyed: 2 } };
+  children[0]!.writeSnapshot(input);
+  const country = consumer.getLatestSnapshot()?.countries[0];
+  assert.deepEqual(country?.governmentActions, input.countries[0]!.governmentActions);
+  assert.equal(country?.cureResearch?.funding, 3188.2);
+  assert.equal(country?.cureResearch?.allocation, 0.4);
+  assert.deepEqual(country?.cureResearch?.flasks, { active: 4, inactive: 3, destroyed: 2 });
+  assert.equal(country?.cureResearch?.rank, 1); // Recomputed from the whole snapshot.
   await consumer.stop();
 });
 

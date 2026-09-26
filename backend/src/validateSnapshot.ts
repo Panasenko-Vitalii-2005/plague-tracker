@@ -1,4 +1,5 @@
 import type { CountrySnapshot, GameSnapshot } from './types.js';
+import { withCureRanks } from './cureRanks.js';
 
 const populationFields = [
   'currentPopulation',
@@ -15,6 +16,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function nonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function finiteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 function validTimestamp(value: unknown): value is string {
@@ -87,6 +92,37 @@ export function validateSnapshot(value: unknown): GameSnapshot {
       }
     }
 
+    const rawActions = raw.governmentActions === undefined ? [] : raw.governmentActions;
+    if (!Array.isArray(rawActions) || rawActions.length > 1024) {
+      throw new SnapshotValidationError(`countries[${position}].governmentActions must be an array of at most 1024 events`);
+    }
+    const governmentActions = rawActions.map((event, eventIndex) => {
+      if (!isRecord(event) || typeof event.id !== 'string'
+        || event.id.length > 4096 || typeof event.turn !== 'number'
+        || !Number.isSafeInteger(event.turn)
+        || typeof event.removed !== 'boolean') {
+        throw new SnapshotValidationError(`countries[${position}].governmentActions[${eventIndex}] is invalid`);
+      }
+      return { id: event.id, turn: event.turn, removed: event.removed };
+    });
+
+    let cureResearch: CountrySnapshot['cureResearch'] = null;
+    if (raw.cureResearch !== undefined && raw.cureResearch !== null) {
+      if (!isRecord(raw.cureResearch) || !finiteNumber(raw.cureResearch.funding)
+        || !finiteNumber(raw.cureResearch.allocation) || !isRecord(raw.cureResearch.flasks)
+        || !nonNegativeSafeInteger(raw.cureResearch.flasks.active)
+        || !nonNegativeSafeInteger(raw.cureResearch.flasks.inactive)
+        || !nonNegativeSafeInteger(raw.cureResearch.flasks.destroyed)
+        || (raw.cureResearch.rank !== undefined && raw.cureResearch.rank !== null
+          && (!nonNegativeSafeInteger(raw.cureResearch.rank) || raw.cureResearch.rank === 0))) {
+        throw new SnapshotValidationError(`countries[${position}].cureResearch is invalid`);
+      }
+      cureResearch = { funding: raw.cureResearch.funding, allocation: raw.cureResearch.allocation,
+        rank: null, flasks: { active: raw.cureResearch.flasks.active,
+          inactive: raw.cureResearch.flasks.inactive,
+          destroyed: raw.cureResearch.flasks.destroyed } };
+    }
+
     return {
       index: raw.index,
       id: raw.id,
@@ -96,6 +132,8 @@ export function validateSnapshot(value: unknown): GameSnapshot {
       deadPopulation: raw.deadPopulation as number,
       infected: raw.infected as number,
       zombies: raw.zombies as number,
+      governmentActions,
+      cureResearch,
     };
   });
 
@@ -106,6 +144,6 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     day: value.day,
     gameDate: value.gameDate,
     cureProgress: value.cureProgress,
-    countries,
+    countries: withCureRanks(countries),
   };
 }

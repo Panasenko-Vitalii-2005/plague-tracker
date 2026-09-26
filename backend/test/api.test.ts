@@ -30,6 +30,8 @@ function snapshot(day: number, revision = 1, countries = 2): GameSnapshot {
       infected: 200 + index + revision,
       deadPopulation: 50 + index,
       zombies: 3 + index,
+      governmentActions: [],
+      cureResearch: null,
     })),
   };
 }
