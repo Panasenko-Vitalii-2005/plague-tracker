@@ -109,6 +109,13 @@ on each saved country/day. Older rows return `governmentActions: []` and
 equal funding uses country index, and any missing cure contribution leaves
 ranks null rather than guessing. The live API uses the current snapshot, while
 the full-day route uses only values saved for the requested day.
+Both `/api/v1/live` and the full-day route include `zombieHordeEvents` in
+collector replay-list order. Each entry has dispatch `turn`, `eventTurn`,
+`diseaseId`, raw source/destination IDs, `zombies`, and nullable `vehicleId`,
+`arrivalTurn`, `arrivalEventTurn`. A day saved before arrival retains null
+arrival fields even when a later day knows the exact arrival. Missing event
+arrays in older collector payloads and older SQLite rows become `[]`; missing
+lifecycle fields become JSON `null` during ingestion.
 All API errors have `{ "error": { "code": "...", "message": "..." } }`;
 unexpected errors are logged server-side and do not expose stack traces.
 
@@ -263,7 +270,9 @@ does not create a new game session.
 
 SQLite migrations are versioned in `schema_migrations`. Version 1 creates
 `game_sessions`, `daily_snapshots`, and `country_snapshots`. Foreign keys are
-enabled; file-backed databases use WAL. Each daily upsert is one transaction:
+enabled; migration 3 adds a JSON column on `daily_snapshots` for that day's
+exact ordered Zombie Horde event list, including duplicate-looking entries.
+File-backed databases use WAL. Each daily upsert is one transaction:
 update the global row, delete its old country rows, insert the complete current
 set. The `(session_id, day)` primary key prevents duplicate days, and
 `country_index` preserves the collector's country order on read-back. Raw

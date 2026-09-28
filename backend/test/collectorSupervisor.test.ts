@@ -16,6 +16,7 @@ function snapshot(day: number): GameSnapshot {
     diseaseTurn: day + 500,
     eventTurn: day + 700,
     cureProgress: 0,
+    zombieHordeEvents: [],
     countries: [{ index: 0, id: 'morroco', currentPopulation: 100, originalPopulation: 100,
       healthyPopulation: 90, deadPopulation: 0, infected: 10, zombies: 0,
       governmentActions: [], cureResearch: null }],

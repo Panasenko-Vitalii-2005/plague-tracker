@@ -1,4 +1,4 @@
-import type { CountrySnapshot, GameSnapshot } from './types.js';
+import type { CountrySnapshot, GameSnapshot, ZombieHordeEvent } from './types.js';
 import { withCureRanks } from './cureRanks.js';
 
 const populationFields = [
@@ -137,6 +137,50 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     };
   });
 
+  const rawHordes = value.zombieHordeEvents === undefined ? [] : value.zombieHordeEvents;
+  if (!Array.isArray(rawHordes) || rawHordes.length > 100_000) {
+    throw new SnapshotValidationError('zombieHordeEvents must be an array of at most 100000 events');
+  }
+  const zombieHordeEvents: ZombieHordeEvent[] = rawHordes.map((raw, index) => {
+    const prefix = `zombieHordeEvents[${index}]`;
+    if (!isRecord(raw)) throw new SnapshotValidationError(`${prefix} must be an object`);
+    for (const field of ['turn', 'eventTurn', 'diseaseId', 'zombies'] as const) {
+      if (!nonNegativeSafeInteger(raw[field])) {
+        throw new SnapshotValidationError(`${prefix}.${field} must be a non-negative safe integer`);
+      }
+    }
+    for (const field of ['sourceCountryId', 'destinationCountryId'] as const) {
+      if (typeof raw[field] !== 'string' || raw[field].trim().length === 0
+        || raw[field].length > 4096) {
+        throw new SnapshotValidationError(`${prefix}.${field} must be a non-empty string`);
+      }
+    }
+    const turn = raw.turn as number;
+    const vehicleId = raw.vehicleId === undefined ? null : raw.vehicleId;
+    const arrivalTurn = raw.arrivalTurn === undefined ? null : raw.arrivalTurn;
+    const arrivalEventTurn = raw.arrivalEventTurn === undefined ? null : raw.arrivalEventTurn;
+    if (vehicleId !== null && !nonNegativeSafeInteger(vehicleId)) {
+      throw new SnapshotValidationError(`${prefix}.vehicleId must be null or a non-negative safe integer`);
+    }
+    if (arrivalTurn !== null && (!nonNegativeSafeInteger(arrivalTurn) || arrivalTurn < turn)) {
+      throw new SnapshotValidationError(`${prefix}.arrivalTurn must be null or at least turn`);
+    }
+    if (arrivalEventTurn !== null && !nonNegativeSafeInteger(arrivalEventTurn)) {
+      throw new SnapshotValidationError(`${prefix}.arrivalEventTurn must be null or a non-negative safe integer`);
+    }
+    return {
+      turn,
+      eventTurn: raw.eventTurn as number,
+      diseaseId: raw.diseaseId as number,
+      sourceCountryId: raw.sourceCountryId as string,
+      destinationCountryId: raw.destinationCountryId as string,
+      zombies: raw.zombies as number,
+      vehicleId: vehicleId as number | null,
+      arrivalTurn: arrivalTurn as number | null,
+      arrivalEventTurn: arrivalEventTurn as number | null,
+    };
+  });
+
   return {
     capturedAt: value.capturedAt,
     diseaseTurn: value.diseaseTurn,
@@ -145,5 +189,6 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     gameDate: value.gameDate,
     cureProgress: value.cureProgress,
     countries: withCureRanks(countries),
+    zombieHordeEvents,
   };
 }

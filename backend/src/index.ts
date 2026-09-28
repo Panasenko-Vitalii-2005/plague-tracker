@@ -20,6 +20,7 @@ export type {
   CountrySnapshot,
   GovernmentActionEvent,
   CountryCureResearch,
+  ZombieHordeEvent,
   GameSnapshot,
   GameSession,
   HistoricalSnapshot,

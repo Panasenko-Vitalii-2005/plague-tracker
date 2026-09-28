@@ -34,6 +34,7 @@ export function copySnapshot(snapshot: GameSnapshot): GameSnapshot {
       cureResearch: country.cureResearch ? { ...country.cureResearch,
         flasks: { ...country.cureResearch.flasks } } : null,
     }))),
+    zombieHordeEvents: snapshot.zombieHordeEvents.map((event) => ({ ...event })),
   };
 }
 

@@ -76,6 +76,13 @@ const migrations = [
       );
     `,
   },
+  {
+    version: 3,
+    sql: `
+      ALTER TABLE daily_snapshots
+        ADD COLUMN zombie_horde_events_json TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {

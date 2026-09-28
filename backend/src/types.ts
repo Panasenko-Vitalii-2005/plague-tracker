@@ -24,6 +24,18 @@ export interface CountryCureResearch {
   flasks: { active: number; inactive: number; destroyed: number };
 }
 
+export interface ZombieHordeEvent {
+  turn: number;
+  eventTurn: number;
+  diseaseId: number;
+  sourceCountryId: string;
+  destinationCountryId: string;
+  zombies: number;
+  vehicleId: number | null;
+  arrivalTurn: number | null;
+  arrivalEventTurn: number | null;
+}
+
 export interface GameSnapshot {
   capturedAt: string;
   diseaseTurn: number;
@@ -32,6 +44,7 @@ export interface GameSnapshot {
   gameDate: string;
   cureProgress: number;
   countries: CountrySnapshot[];
+  zombieHordeEvents: ZombieHordeEvent[];
 }
 
 export interface GameSession {

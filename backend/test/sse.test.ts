@@ -21,6 +21,7 @@ function snapshot(day: number, revision = 1): GameSnapshot {
     diseaseTurn: day + 500,
     eventTurn: revision,
     cureProgress: revision,
+    zombieHordeEvents: [],
     countries: [{
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
@@ -165,9 +166,19 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.equal(started.event, 'status');
   assert.deepEqual(started.data, { running: true, lastError: null });
 
-  collector.emitSnapshot(snapshot(100, 1));
+  const dispatched = snapshot(100, 1);
+  dispatched.zombieHordeEvents = [{
+    turn: 100, eventTurn: 1, diseaseId: 0,
+    sourceCountryId: 'soudi_arabia', destinationCountryId: 'sudan', zombies: 77_868,
+    vehicleId: 1_389, arrivalTurn: null, arrivalEventTurn: null,
+  }];
+  collector.emitSnapshot(dispatched);
   const first = await events.next();
-  collector.emitSnapshot(snapshot(100, 2));
+  const arrived = snapshot(100, 2);
+  arrived.zombieHordeEvents = [{
+    ...dispatched.zombieHordeEvents[0]!, arrivalTurn: 100, arrivalEventTurn: 2,
+  }];
+  collector.emitSnapshot(arrived);
   const second = await events.next();
   collector.emitSnapshot(snapshot(101, 1));
   const nextDay = await events.next();
@@ -175,6 +186,8 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.deepEqual([first.data, second.data, nextDay.data].map((value) => (value as LiveSnapshotEvent).snapshot.day),
     [100, 100, 101]);
   assert.equal((second.data as LiveSnapshotEvent).snapshot.eventTurn, 2);
+  assert.deepEqual((first.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, dispatched.zombieHordeEvents);
+  assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, arrived.zombieHordeEvents);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.id, 'soudi_arabia');
   assert.equal((first.data as LiveSnapshotEvent).sessionId, (nextDay.data as LiveSnapshotEvent).sessionId);
 
