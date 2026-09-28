@@ -18,6 +18,7 @@ function snapshot(
     eventTurn: changes.eventTurn ?? revision,
     cureProgress: changes.cureProgress ?? 0,
     zombieHordeEvents: [],
+    countryInfectionEvents: [],
     countries: [{
       index: 0,
       id: 'soudi_arabia',

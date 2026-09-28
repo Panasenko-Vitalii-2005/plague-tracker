@@ -101,6 +101,13 @@ const migrations = [
         CHECK (port_status IS NULL OR port_status IN ('open', 'closed'));
     `,
   },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE daily_snapshots
+        ADD COLUMN country_infection_events_json TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {

@@ -131,6 +131,16 @@ collector replay-list order. Each entry has dispatch `turn`, `eventTurn`,
 arrival fields even when a later day knows the exact arrival. Missing event
 arrays in older collector payloads and older SQLite rows become `[]`; missing
 lifecycle fields become JSON `null` during ingestion.
+`/api/v1/live` (`snapshot.countryInfectionEvents`), SSE live snapshots,
+and the full-day route expose `countryInfectionEvents: [{ countryId, turn,
+eventTurn, diseaseId }]`. This cumulative replay-derived list records the
+game's **first detected infection marker** in supported ordinary single-player
+play, not necessarily the physical instant the first infected person entered
+a country. It has no reliable source-country or route provenance; the backend
+does not infer either. Replay order, duplicates, raw country IDs and integer
+values are preserved. Missing arrays from older collectors and older SQLite
+rows read as `[]`. Each historical day returns only the list stored with that
+day; later markers do not retroactively enrich earlier snapshots.
 All API errors have `{ "error": { "code": "...", "message": "..." } }`;
 unexpected errors are logged server-side and do not expose stack traces.
 
@@ -291,7 +301,10 @@ SQLite migrations are versioned in `schema_migrations`. Version 1 creates
 enabled; migration 3 adds a JSON column on `daily_snapshots` for that day's
 exact ordered Zombie Horde event list, including duplicate-looking entries.
 Migration 4 adds nullable `country_snapshots.public_order` with a `0..1`
-constraint; pre-migration rows read as null.
+constraint; pre-migration rows read as null. Migration 5 adds nullable
+infrastructure-status columns. Migration 6 adds
+`daily_snapshots.country_infection_events_json` with an empty-array default
+for old rows. The ordered list is replaced atomically with the daily snapshot.
 File-backed databases use WAL. Each daily upsert is one transaction:
 update the global row, delete its old country rows, insert the complete current
 set. The `(session_id, day)` primary key prevents duplicate days, and

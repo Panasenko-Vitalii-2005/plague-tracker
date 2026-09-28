@@ -23,6 +23,7 @@ function snapshot(turn = 10, id = 'soudi_arabia'): GameSnapshot {
     gameDate: '2026-10-02',
     cureProgress: 37.5,
     zombieHordeEvents: [],
+    countryInfectionEvents: [],
     countries: [{
       index: 0,
       id,
@@ -139,6 +140,20 @@ test('collector NDJSON carries cumulative Zombie Horde lifecycle events in order
   ];
   children[0]!.writeSnapshot(input);
   assert.deepEqual(consumer.getLatestSnapshot()?.zombieHordeEvents, input.zombieHordeEvents);
+  await consumer.stop();
+});
+
+test('collector NDJSON carries cumulative country infection markers without deduplication', async () => {
+  const { consumer, children } = fixture();
+  await consumer.start();
+  const input = snapshot();
+  input.countryInfectionEvents = [
+    { countryId: 'soudi_arabia', turn: 1, eventTurn: 1, diseaseId: 0 },
+    { countryId: 'middle_east', turn: 69, eventTurn: 98, diseaseId: 0 },
+    { countryId: 'middle_east', turn: 69, eventTurn: 98, diseaseId: 0 },
+  ];
+  children[0]!.writeSnapshot(input);
+  assert.deepEqual(consumer.getLatestSnapshot()?.countryInfectionEvents, input.countryInfectionEvents);
   await consumer.stop();
 });
 

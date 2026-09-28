@@ -1,4 +1,4 @@
-import type { CountrySnapshot, GameSnapshot, InfrastructureStatus, ZombieHordeEvent } from './types.js';
+import type { CountryInfectionEvent, CountrySnapshot, GameSnapshot, InfrastructureStatus, ZombieHordeEvent } from './types.js';
 import { withCureRanks } from './cureRanks.js';
 
 const populationFields = [
@@ -199,6 +199,30 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     };
   });
 
+  const rawInfections = value.countryInfectionEvents === undefined ? [] : value.countryInfectionEvents;
+  if (!Array.isArray(rawInfections) || rawInfections.length > 100_000) {
+    throw new SnapshotValidationError('countryInfectionEvents must be an array of at most 100000 events');
+  }
+  const countryInfectionEvents: CountryInfectionEvent[] = rawInfections.map((raw, index) => {
+    const prefix = `countryInfectionEvents[${index}]`;
+    if (!isRecord(raw)) throw new SnapshotValidationError(`${prefix} must be an object`);
+    if (typeof raw.countryId !== 'string' || raw.countryId.trim().length === 0
+      || raw.countryId.length > 4096) {
+      throw new SnapshotValidationError(`${prefix}.countryId must be a non-empty string`);
+    }
+    for (const field of ['turn', 'eventTurn', 'diseaseId'] as const) {
+      if (typeof raw[field] !== 'number' || !Number.isSafeInteger(raw[field])) {
+        throw new SnapshotValidationError(`${prefix}.${field} must be a safe integer`);
+      }
+    }
+    return {
+      countryId: raw.countryId,
+      turn: raw.turn as number,
+      eventTurn: raw.eventTurn as number,
+      diseaseId: raw.diseaseId as number,
+    };
+  });
+
   return {
     capturedAt: value.capturedAt,
     diseaseTurn: value.diseaseTurn,
@@ -208,5 +232,6 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     cureProgress: value.cureProgress,
     countries: withCureRanks(countries),
     zombieHordeEvents,
+    countryInfectionEvents,
   };
 }

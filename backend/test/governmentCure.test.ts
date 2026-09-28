@@ -35,6 +35,7 @@ function snapshot(day: number, firstFunding: number, secondFunding: number): Gam
     gameDate: day === 100 ? '2027-01-01' : '2027-01-05',
     diseaseTurn: day, eventTurn: day + 5, cureProgress: day - 90,
     zombieHordeEvents: [],
+    countryInfectionEvents: [],
     countries: [country(0, 'morroco', firstFunding, day),
       country(1, 'soudi_arabia', secondFunding, day), country(2, 'peru', 0, day)] };
 }
@@ -150,10 +151,11 @@ test('v1 SQLite rows migrate and read with empty actions and null cure data', (t
   const db = openDatabase(databasePath);
   t.after(() => { db.close(); rmSync(path.dirname(databasePath), { recursive: true, force: true }); });
   assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all(),
-    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
+    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }]);
   const oldSnapshot = new SqliteSnapshotRepository(db).getByDay('old', 10);
   const country = oldSnapshot?.countries[0];
   assert.deepEqual(oldSnapshot?.zombieHordeEvents, []);
+  assert.deepEqual(oldSnapshot?.countryInfectionEvents, []);
   assert.deepEqual(country?.governmentActions, []);
   assert.equal(country?.cureResearch, null);
   assert.equal(country?.publicOrder, null);

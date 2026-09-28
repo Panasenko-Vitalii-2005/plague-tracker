@@ -42,6 +42,13 @@ export interface ZombieHordeEvent {
   arrivalEventTurn: number | null;
 }
 
+export interface CountryInfectionEvent {
+  countryId: string;
+  turn: number;
+  eventTurn: number;
+  diseaseId: number;
+}
+
 export interface GameSnapshot {
   capturedAt: string;
   diseaseTurn: number;
@@ -51,6 +58,7 @@ export interface GameSnapshot {
   cureProgress: number;
   countries: CountrySnapshot[];
   zombieHordeEvents: ZombieHordeEvent[];
+  countryInfectionEvents: CountryInfectionEvent[];
 }
 
 export interface GameSession {

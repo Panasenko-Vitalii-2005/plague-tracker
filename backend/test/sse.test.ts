@@ -22,6 +22,7 @@ function snapshot(day: number, revision = 1): GameSnapshot {
     eventTurn: revision,
     cureProgress: revision,
     zombieHordeEvents: [],
+    countryInfectionEvents: [],
     countries: [{
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
@@ -177,6 +178,9 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
     sourceCountryId: 'soudi_arabia', destinationCountryId: 'sudan', zombies: 77_868,
     vehicleId: 1_389, arrivalTurn: null, arrivalEventTurn: null,
   }];
+  dispatched.countryInfectionEvents = [
+    { countryId: 'soudi_arabia', turn: 1, eventTurn: 1, diseaseId: 0 },
+  ];
   collector.emitSnapshot(dispatched);
   const first = await events.next();
   const arrived = snapshot(100, 2);
@@ -187,6 +191,10 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   arrived.zombieHordeEvents = [{
     ...dispatched.zombieHordeEvents[0]!, arrivalTurn: 100, arrivalEventTurn: 2,
   }];
+  arrived.countryInfectionEvents = [
+    ...dispatched.countryInfectionEvents,
+    { countryId: 'middle_east', turn: 69, eventTurn: 98, diseaseId: 0 },
+  ];
   collector.emitSnapshot(arrived);
   const second = await events.next();
   collector.emitSnapshot(snapshot(101, 1));
@@ -197,6 +205,10 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.equal((second.data as LiveSnapshotEvent).snapshot.eventTurn, 2);
   assert.deepEqual((first.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, dispatched.zombieHordeEvents);
   assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, arrived.zombieHordeEvents);
+  assert.deepEqual((first.data as LiveSnapshotEvent).snapshot.countryInfectionEvents,
+    dispatched.countryInfectionEvents);
+  assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.countryInfectionEvents,
+    arrived.countryInfectionEvents);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 1);
   assert.equal((second.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 0.9951444);
   assert.deepEqual([first.data, second.data].map((value) => {

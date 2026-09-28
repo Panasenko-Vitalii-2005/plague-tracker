@@ -24,6 +24,7 @@ interface DailyRow {
   event_turn: number;
   cure_progress: number;
   zombie_horde_events_json: string;
+  country_infection_events_json: string;
 }
 
 interface CountryRow {
@@ -162,15 +163,16 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
     const upsert = this.db.prepare(`
       INSERT INTO daily_snapshots
         (session_id, day, captured_at, game_date, disease_turn, event_turn,
-         cure_progress, zombie_horde_events_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         cure_progress, zombie_horde_events_json, country_infection_events_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(session_id, day) DO UPDATE SET
         captured_at = excluded.captured_at,
         game_date = excluded.game_date,
         disease_turn = excluded.disease_turn,
         event_turn = excluded.event_turn,
         cure_progress = excluded.cure_progress,
-        zombie_horde_events_json = excluded.zombie_horde_events_json
+        zombie_horde_events_json = excluded.zombie_horde_events_json,
+        country_infection_events_json = excluded.country_infection_events_json
     `);
     const clearCountries = this.db.prepare(
       'DELETE FROM country_snapshots WHERE session_id = ? AND day = ?',
@@ -194,6 +196,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
         snapshot.sessionId, snapshot.day, snapshot.capturedAt, snapshot.gameDate,
         snapshot.diseaseTurn, snapshot.eventTurn, snapshot.cureProgress,
         JSON.stringify(snapshot.zombieHordeEvents ?? []),
+        JSON.stringify(snapshot.countryInfectionEvents ?? []),
       );
       clearCountries.run(snapshot.sessionId, snapshot.day);
       for (const country of snapshot.countries) {
@@ -352,6 +355,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
       eventTurn: row.event_turn,
       cureProgress: row.cure_progress,
       zombieHordeEvents: JSON.parse(row.zombie_horde_events_json) as HistoricalSnapshot['zombieHordeEvents'],
+      countryInfectionEvents: JSON.parse(row.country_infection_events_json) as HistoricalSnapshot['countryInfectionEvents'],
       countries: withCureRanks(countries),
     };
   }
