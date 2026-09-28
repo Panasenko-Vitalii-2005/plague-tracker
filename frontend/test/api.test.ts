@@ -50,6 +50,8 @@ test('live response parsing keeps raw country ID unchanged', () => {
   })
   assert.equal(value.snapshot?.countries[0]?.id, 'soudi_arabia')
   assert.equal(value.snapshot?.countries[0]?.publicOrder, null)
+  assert.deepEqual([value.snapshot?.countries[0]?.borderStatus,
+    value.snapshot?.countries[0]?.airportStatus, value.snapshot?.countries[0]?.portStatus], [null, null, null])
   assert.equal(value.snapshot?.cureProgress, 25.51)
   assert.throws(() => parseLiveState({ collector: { running: true, lastError: null }, session: null,
     snapshot: { ...snapshot, countries: [{ ...country, infected: 'twenty' }] } }), /country.infected/)
@@ -58,7 +60,8 @@ test('live response parsing keeps raw country ID unchanged', () => {
 test('full historical snapshot parser validates every field and keeps raw country IDs', () => {
   const parsed = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot })
   assert.equal(parsed.sessionId, 'session-a')
-  assert.deepEqual(parsed.countries, [{ ...country, publicOrder: null }])
+  assert.deepEqual(parsed.countries, [{ ...country, publicOrder: null,
+    borderStatus: null, airportStatus: null, portStatus: null }])
   for (const [key, value] of Object.entries({ sessionId: 4, capturedAt: 4, day: '10', gameDate: 4,
     diseaseTurn: '12', eventTurn: '14', cureProgress: '25', countries: null })) {
     assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, [key]: value }))
@@ -81,6 +84,27 @@ test('public order parser preserves raw fractions and normalizes legacy/null val
   for (const bad of [-0.01, 1.01, '0.5', Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
       countries: [{ ...country, publicOrder: bad }] }), /country.publicOrder/)
+  }
+})
+
+test('infrastructure parser preserves open, closed and null independently; missing stays null', () => {
+  const countries = [
+    { ...country, borderStatus: 'open', airportStatus: 'closed', portStatus: null },
+    { ...country, index: 3, id: 'egypt', borderStatus: 'closed', airportStatus: 'open', portStatus: 'open' },
+    { ...country, index: 4, id: 'peru' },
+  ]
+  const parsed = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, countries })
+  assert.deepEqual(parsed.countries.map(({ borderStatus, airportStatus, portStatus }) =>
+    [borderStatus, airportStatus, portStatus]),
+  [['open', 'closed', null], ['closed', 'open', 'open'], [null, null, null]])
+  const live = parseLiveState({ collector: { running: true, lastError: null }, session: null,
+    snapshot: { ...snapshot, countries } })
+  assert.equal(live.snapshot?.countries[0]?.airportStatus, 'closed')
+  for (const field of ['borderStatus', 'airportStatus', 'portStatus'] as const) {
+    for (const invalid of ['OPEN', 'unknown', '', 0, false, [], {}]) {
+      assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+        countries: [{ ...country, [field]: invalid }] }), new RegExp(`country\\.${field}`))
+    }
   }
 })
 

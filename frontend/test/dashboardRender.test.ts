@@ -41,7 +41,9 @@ const countryCardFixture = (id: string, index: number,
   overrides: Partial<CountrySnapshot> = {}): CountrySnapshot => ({
   id, index, currentPopulation: 80_000_000, originalPopulation: 100_000_000,
   healthyPopulation: 20_000_000, infected: 55_000_000, zombies: 0,
-  deadPopulation: 5_000_000, publicOrder: null, governmentActions: [], cureResearch: null, ...overrides,
+  deadPopulation: 5_000_000, publicOrder: null,
+  borderStatus: null, airportStatus: null, portStatus: null,
+  governmentActions: [], cureResearch: null, ...overrides,
 })
 
 const horde: ZombieHordeEvent = { turn: 10, eventTurn: 17, diseaseId: 0,
@@ -147,6 +149,24 @@ test('country cards show independent public order percentages and distinguish ze
   assert.deepEqual(input.map((country) => country.publicOrder), [1, 0, 0.9497843, null])
 })
 
+test('country cards show independent border, airport and port states including N/A', () => {
+  const countries = [
+    countryCardFixture('egypt', 0, { borderStatus: 'open', airportStatus: 'closed', portStatus: null }),
+    countryCardFixture('russia', 1, { borderStatus: 'closed', airportStatus: 'open', portStatus: 'open' }),
+  ]
+  const html = renderToStaticMarkup(createElement(CountryGrid, { countries }))
+  const cards = [...html.matchAll(/<article class="surface country-card"[^>]*>([\s\S]*?)<\/article>/g)]
+  assert.equal(cards.length, 2)
+  assert.match(cards[0]![1]!, /<dt>Borders<\/dt><dd class="is-open">Open<\/dd>/)
+  assert.match(cards[0]![1]!, /<dt>Airport<\/dt><dd class="is-closed">Closed<\/dd>/)
+  assert.match(cards[0]![1]!, /<dt>Port<\/dt><dd class="is-unavailable">N\/A<\/dd>/)
+  assert.match(cards[1]![1]!, /<dt>Borders<\/dt><dd class="is-closed">Closed<\/dd>/)
+  assert.match(cards[1]![1]!, /<dt>Airport<\/dt><dd class="is-open">Open<\/dd>/)
+  assert.match(cards[1]![1]!, /<dt>Port<\/dt><dd class="is-open">Open<\/dd>/)
+  assert.deepEqual(countries.map(({ borderStatus, airportStatus, portStatus }) =>
+    [borderStatus, airportStatus, portStatus]), [['open', 'closed', null], ['closed', 'open', 'open']])
+})
+
 test('country card shows formatted cure research and exactly the recorded flask states', () => {
   const research = { funding: 1564.9822, allocation: 0.2, rank: 9,
     flasks: { active: 2, inactive: 6, destroyed: 0 } }
@@ -236,7 +256,9 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
       eventTurn: 211, cureProgress: 34.2769, zombieHordeEvents: [horde], countries: [
         { index: 0, id: 'south_africa', originalPopulation: 1000, currentPopulation: 990,
           healthyPopulation: 800, infected: 170, deadPopulation: 20, zombies: 0,
-          publicOrder: 0.4627481, governmentActions: [], cureResearch: null },
+          publicOrder: 0.4627481,
+          borderStatus: 'open', airportStatus: 'closed', portStatus: null,
+          governmentActions: [], cureResearch: null },
       ] } }
   const html = renderToStaticMarkup(createElement(LivePanel, { live }))
   assert.match(html, /Live outbreak overview/)
@@ -252,6 +274,10 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
   assert.match(html, /<dt>Infected<\/dt><dd>170<\/dd>/)
   assert.match(html, /Public Order/)
   assert.match(html, /46,27%/)
+  assert.match(html, /<dt>Borders<\/dt><dd class="is-open">Open<\/dd>/)
+  assert.match(html, /<dt>Airport<\/dt><dd class="is-closed">Closed<\/dd>/)
+  assert.match(html, /<dt>Port<\/dt><dd class="is-unavailable">N\/A<\/dd>/)
+  assert.equal((html.match(/aria-label="Infrastructure status"/g) ?? []).length, 2)
   assert.match(html, /Zombie Horde Movements/)
   assert.match(html, /Soudi Arabia/)
   assert.match(html, /In transit/)
@@ -283,6 +309,7 @@ test('history dashboard renders saved session, global values and historical coun
     countries: [{ index: 1, id: 'south_africa', originalPopulation: 100, currentPopulation: 90,
       healthyPopulation: 60, infected: 30, deadPopulation: 10, zombies: 0,
       publicOrder: null,
+      borderStatus: null, airportStatus: null, portStatus: null,
       governmentActions: [{ id: 'urban_evacuation_ordered', turn: 13, removed: false }],
       cureResearch: { funding: 2500.99, allocation: 0.4, rank: 2,
         flasks: { active: 3, inactive: 5, destroyed: 0 } } }] }
@@ -385,6 +412,46 @@ test('Egypt public order stays tied to the selected historical day, not the late
   assert.match(laterDay, /<dt>Public Order<\/dt><dd>50,94%<\/dd>/)
   assert.match(liveDay, /<dt>Public Order<\/dt><dd>46,27%<\/dd>/)
   assert.match(renderDay(historical), /<dt>Public Order<\/dt><dd>94,98%<\/dd>/)
+})
+
+test('selected-country overview and cards use infrastructure from the selected historical day', () => {
+  const summary: SessionSummary = { id: 'infrastructure-session', startedAt: '2026-09-23T00:00:00Z', endedAt: null,
+    firstDay: 267, lastDay: 311, snapshotCount: 2, isOpen: true,
+    firstGameDate: '2027-01-01', lastGameDate: '2027-02-14' }
+  const historical: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
+    day: 267, gameDate: '2027-01-01', diseaseTurn: 267, eventTurn: 267, cureProgress: 0,
+    zombieHordeEvents: [], countries: [countryCardFixture('egypt', 0,
+      { borderStatus: 'open', airportStatus: 'open', portStatus: 'open' })] }
+  const later: HistoricalSnapshot = { ...historical, day: 311, gameDate: '2027-02-14',
+    countries: [countryCardFixture('egypt', 0,
+      { borderStatus: 'closed', airportStatus: 'closed', portStatus: 'closed' })] }
+  const common = { sessions: loaded([summary]), session: idle<SessionDetails>(),
+    global: idle<SessionHistoryResponse>(),
+    countries: loaded<SessionCountriesResponse>({ sessionId: summary.id, countries: [{ id: 'egypt', index: 0 }] }),
+    country: idle<CountryHistoryResponse>(), sessionId: summary.id, onSessionChange: () => {},
+    preferredCountryId: 'egypt', onCountryChange: () => {} }
+  const renderDay = (snapshot: HistoricalSnapshot) => renderToStaticMarkup(createElement(HistoryDashboard, {
+    ...common, replay: { ...replay(snapshot, snapshot.day), days: [267, 311],
+      index: snapshot.day === 267 ? 0 : 1 },
+  }))
+
+  const firstDay = renderDay(historical)
+  const laterDay = renderDay(later)
+  const live: LiveGameView = { connectionState: 'live', collectorStatus: { running: true, lastError: null },
+    session: null, sessionId: summary.id, error: null,
+    snapshot: { ...later, day: 312, countries: [countryCardFixture('egypt', 0,
+      { borderStatus: 'open', airportStatus: 'closed', portStatus: null })] } }
+  const liveDay = renderToStaticMarkup(createElement(LivePanel, { live }))
+  assert.match(firstDay, /Saved day 267/)
+  assert.equal((firstDay.match(/<dd class="is-open">Open<\/dd>/g) ?? []).length, 6)
+  assert.doesNotMatch(firstDay, /<dd class="is-closed">Closed<\/dd>/)
+  assert.match(laterDay, /Saved day 311/)
+  assert.equal((laterDay.match(/<dd class="is-closed">Closed<\/dd>/g) ?? []).length, 6)
+  assert.doesNotMatch(laterDay, /<dd class="is-open">Open<\/dd>/)
+  assert.match(liveDay, /<dt>Borders<\/dt><dd class="is-open">Open<\/dd>/)
+  assert.match(liveDay, /<dt>Airport<\/dt><dd class="is-closed">Closed<\/dd>/)
+  assert.match(liveDay, /<dt>Port<\/dt><dd class="is-unavailable">N\/A<\/dd>/)
+  assert.equal((renderDay(historical).match(/<dd class="is-open">Open<\/dd>/g) ?? []).length, 6)
 })
 
 test('history dashboard gives a distinct empty-session state', () => {

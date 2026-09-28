@@ -1,5 +1,6 @@
 import type {
   CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountrySnapshot,
+  InfrastructureStatus,
   GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
@@ -53,6 +54,12 @@ function boolean(value: unknown, label: string): boolean {
   return value
 }
 
+function infrastructureStatus(value: unknown, label: string): InfrastructureStatus {
+  if (value === undefined || value === null) return null
+  if (value === 'open' || value === 'closed') return value
+  throw new Error(`Invalid ${label}: expected "open", "closed", or null`)
+}
+
 export function parseCollectorStatus(value: unknown): CollectorStatus {
   const data = record(value, 'collector status')
   return { running: boolean(data.running, 'running'), lastError: nullableString(data.lastError, 'lastError') }
@@ -76,6 +83,9 @@ function parseCountry(value: unknown): CountrySnapshot {
     infected: number(data.infected, 'country.infected'),
     zombies: number(data.zombies, 'country.zombies'),
     publicOrder,
+    borderStatus: infrastructureStatus(data.borderStatus, 'country.borderStatus'),
+    airportStatus: infrastructureStatus(data.airportStatus, 'country.airportStatus'),
+    portStatus: infrastructureStatus(data.portStatus, 'country.portStatus'),
     governmentActions: array(data.governmentActions, 'country.governmentActions').map((value) => {
       const action = record(value, 'country.governmentActions event')
       return { id: string(action.id, 'government action.id'), turn: integer(action.turn, 'government action.turn'),

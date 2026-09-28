@@ -11,10 +11,12 @@ test('global live metrics are sums, independent of currentPopulation semantics',
   const values = aggregateCountries([
     { index: 0, id: 'morroco', currentPopulation: 999, originalPopulation: 100,
       healthyPopulation: 70, infected: 20, deadPopulation: 5, zombies: 1,
-      publicOrder: null, governmentActions: [], cureResearch: null },
+      publicOrder: null, borderStatus: null, airportStatus: null, portStatus: null,
+      governmentActions: [], cureResearch: null },
     { index: 1, id: 'philipines', currentPopulation: 1, originalPopulation: 200,
       healthyPopulation: 100, infected: 50, deadPopulation: 30, zombies: 4,
-      publicOrder: null, governmentActions: [], cureResearch: null },
+      publicOrder: null, borderStatus: null, airportStatus: null, portStatus: null,
+      governmentActions: [], cureResearch: null },
   ])
   assert.deepEqual(values, { healthy: 170, infected: 70, dead: 35, zombies: 5, originalPopulation: 300 })
 })

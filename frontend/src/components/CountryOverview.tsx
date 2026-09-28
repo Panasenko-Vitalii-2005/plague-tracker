@@ -2,6 +2,7 @@ import type { CountrySnapshot } from '../api/types.ts'
 import { formatCountryName } from '../domain/countries.ts'
 import { countryOverview } from '../domain/dashboard.ts'
 import { formatPercent, formatPopulation, formatPublicOrder } from '../domain/format.ts'
+import { CountryInfrastructure } from './CountryInfrastructure.tsx'
 
 export function CountryOverview({ id, country, context }: {
   id: string
@@ -27,5 +28,6 @@ export function CountryOverview({ id, country, context }: {
       <span>Current population <strong>{formatPopulation(values.currentPopulation)}</strong></span>
       <span>Public Order <strong>{formatPublicOrder(country.publicOrder)}</strong></span>
     </div>
+    <CountryInfrastructure country={country} />
   </section>
 }

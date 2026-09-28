@@ -10,6 +10,7 @@ import {
   CountryGovernmentActions,
   CountryResearch,
 } from "./CountryResearch.tsx";
+import { CountryInfrastructure } from "./CountryInfrastructure.tsx";
 
 const sliceColors = {
   Healthy: "var(--healthy)",
@@ -122,6 +123,7 @@ function CountryCard({ country }: { country: CountrySnapshot }) {
         <CountryDonut country={country} />
       </div>
 
+      <CountryInfrastructure country={country} />
       <CountryResearch cureResearch={country.cureResearch} />
       <CountryGovernmentActions actions={country.governmentActions} />
     </article>

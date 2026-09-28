@@ -21,9 +21,14 @@ export interface CountrySnapshot {
   infected: number
   zombies: number
   publicOrder: number | null
+  borderStatus: InfrastructureStatus
+  airportStatus: InfrastructureStatus
+  portStatus: InfrastructureStatus
   governmentActions: GovernmentActionEvent[]
   cureResearch: CountryCureResearch | null
 }
+
+export type InfrastructureStatus = 'open' | 'closed' | null
 
 export interface ZombieHordeEvent {
   turn: number
