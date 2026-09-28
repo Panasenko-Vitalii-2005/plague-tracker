@@ -26,7 +26,7 @@ function snapshot(day: number, revision = 1): GameSnapshot {
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
       infected: 10, deadPopulation: 0, zombies: 0,
-      governmentActions: [], cureResearch: null,
+      publicOrder: null, governmentActions: [], cureResearch: null,
     }],
   };
 }
@@ -167,6 +167,7 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.deepEqual(started.data, { running: true, lastError: null });
 
   const dispatched = snapshot(100, 1);
+  dispatched.countries[0]!.publicOrder = 1;
   dispatched.zombieHordeEvents = [{
     turn: 100, eventTurn: 1, diseaseId: 0,
     sourceCountryId: 'soudi_arabia', destinationCountryId: 'sudan', zombies: 77_868,
@@ -175,6 +176,7 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   collector.emitSnapshot(dispatched);
   const first = await events.next();
   const arrived = snapshot(100, 2);
+  arrived.countries[0]!.publicOrder = 0.9951444;
   arrived.zombieHordeEvents = [{
     ...dispatched.zombieHordeEvents[0]!, arrivalTurn: 100, arrivalEventTurn: 2,
   }];
@@ -188,6 +190,8 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.equal((second.data as LiveSnapshotEvent).snapshot.eventTurn, 2);
   assert.deepEqual((first.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, dispatched.zombieHordeEvents);
   assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, arrived.zombieHordeEvents);
+  assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 1);
+  assert.equal((second.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 0.9951444);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.id, 'soudi_arabia');
   assert.equal((first.data as LiveSnapshotEvent).sessionId, (nextDay.data as LiveSnapshotEvent).sessionId);
 

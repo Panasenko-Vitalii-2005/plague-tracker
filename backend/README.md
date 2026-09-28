@@ -100,6 +100,12 @@ country list. An unknown country history returns 404 (`COUNTRY_NOT_FOUND`).
 The full-day route returns 404 (`SNAPSHOT_NOT_FOUND`) for an unobserved day and
 400 (`INVALID_DAY`) unless `day` is a non-negative safe integer. It does not
 substitute a nearby day. Saved country values are returned unchanged.
+Each live, SSE and full-day country also contains `publicOrder: number | null`:
+the collector's raw `System.Single` fraction in `0..1`, **not** a percentage.
+The backend does not scale or round it. Missing values in older collector
+payloads and older SQLite rows become `null`, as do explicitly unreadable
+values. Each historical day retains its own observed value; later changes do
+not modify earlier snapshots.
 Each live and full-day country contains `governmentActions: [{ id, turn,
 removed }]` and `cureResearch: { funding, allocation, rank, flasks: { active,
 inactive, destroyed } } | null`. Action IDs are raw and never whitelisted.
@@ -191,8 +197,9 @@ when the child closes. Each line is parsed and validated independently. A bad
 line is logged and skipped; later lines continue normally. Validation requires
 a parseable ISO timestamp, a valid `yyyy-MM-dd` game date, non-negative safe
 integer `day`, turns and population values, finite `cureProgress` in `0..100`,
-non-empty country IDs, and no duplicate IDs. It does not require exactly 58
-countries. Raw IDs are passed through unchanged.
+`publicOrder` either null or finite in `0..1`, non-empty country IDs, and no
+duplicate IDs. It does not require exactly 58 countries. Raw IDs are passed
+through unchanged.
 
 Stderr has its own line reader and is never parsed as a snapshot. Diagnostic
 lines are logged with `[collector]`; lines beginning with `error:` are reported
@@ -272,6 +279,8 @@ SQLite migrations are versioned in `schema_migrations`. Version 1 creates
 `game_sessions`, `daily_snapshots`, and `country_snapshots`. Foreign keys are
 enabled; migration 3 adds a JSON column on `daily_snapshots` for that day's
 exact ordered Zombie Horde event list, including duplicate-looking entries.
+Migration 4 adds nullable `country_snapshots.public_order` with a `0..1`
+constraint; pre-migration rows read as null.
 File-backed databases use WAL. Each daily upsert is one transaction:
 update the global row, delete its old country rows, insert the complete current
 set. The `(session_id, day)` primary key prevents duplicate days, and

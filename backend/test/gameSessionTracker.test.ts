@@ -27,6 +27,7 @@ function snapshot(
       deadPopulation: 0,
       infected: revision,
       zombies: 0,
+      publicOrder: null,
       governmentActions: [],
       cureResearch: null,
     }],

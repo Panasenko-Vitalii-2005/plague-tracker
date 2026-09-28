@@ -83,6 +83,13 @@ const migrations = [
         ADD COLUMN zombie_horde_events_json TEXT NOT NULL DEFAULT '[]';
     `,
   },
+  {
+    version: 4,
+    sql: `
+      ALTER TABLE country_snapshots ADD COLUMN public_order REAL
+        CHECK (public_order IS NULL OR (public_order >= 0 AND public_order <= 1));
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {

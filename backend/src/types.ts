@@ -7,6 +7,7 @@ export interface CountrySnapshot {
   deadPopulation: number;
   infected: number;
   zombies: number;
+  publicOrder: number | null;
   governmentActions: GovernmentActionEvent[];
   cureResearch: CountryCureResearch | null;
 }

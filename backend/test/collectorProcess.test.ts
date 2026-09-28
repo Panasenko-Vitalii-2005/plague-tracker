@@ -32,6 +32,7 @@ function snapshot(turn = 10, id = 'soudi_arabia'): GameSnapshot {
       deadPopulation: 0,
       infected: 10,
       zombies: 0,
+      publicOrder: null,
       governmentActions: [],
       cureResearch: null,
     }],
@@ -86,9 +87,12 @@ test('valid snapshot updates latest and notifies subscribers with raw id', async
   const received: GameSnapshot[] = [];
   consumer.onSnapshot((value) => received.push(value));
   await consumer.start();
-  children[0]!.writeSnapshot(snapshot());
+  const incoming = snapshot();
+  incoming.countries[0]!.publicOrder = 0.9951444;
+  children[0]!.writeSnapshot(incoming);
   assert.equal(received.length, 1);
   assert.equal(received[0]!.countries[0]!.id, 'soudi_arabia');
+  assert.equal(received[0]!.countries[0]!.publicOrder, 0.9951444);
   assert.equal(consumer.getLatestSnapshot()?.capturedAt, snapshot().capturedAt);
   assert.equal(consumer.getStatus().lastDiseaseTurn, 10);
   await consumer.stop();

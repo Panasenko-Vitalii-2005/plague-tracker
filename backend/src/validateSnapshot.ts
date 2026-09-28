@@ -92,6 +92,11 @@ export function validateSnapshot(value: unknown): GameSnapshot {
       }
     }
 
+    const publicOrder = raw.publicOrder === undefined ? null : raw.publicOrder;
+    if (publicOrder !== null && (!finiteNumber(publicOrder) || publicOrder < 0 || publicOrder > 1)) {
+      throw new SnapshotValidationError(`countries[${position}].publicOrder must be null or finite between 0 and 1`);
+    }
+
     const rawActions = raw.governmentActions === undefined ? [] : raw.governmentActions;
     if (!Array.isArray(rawActions) || rawActions.length > 1024) {
       throw new SnapshotValidationError(`countries[${position}].governmentActions must be an array of at most 1024 events`);
@@ -132,6 +137,7 @@ export function validateSnapshot(value: unknown): GameSnapshot {
       deadPopulation: raw.deadPopulation as number,
       infected: raw.infected as number,
       zombies: raw.zombies as number,
+      publicOrder,
       governmentActions,
       cureResearch,
     };
