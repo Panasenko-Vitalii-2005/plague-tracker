@@ -36,6 +36,9 @@ interface CountryRow {
   infected: number;
   zombies: number;
   public_order: number | null;
+  border_status: 'open' | 'closed' | null;
+  airport_status: 'open' | 'closed' | null;
+  port_status: 'open' | 'closed' | null;
   cure_funding: number | null;
   cure_allocation: number | null;
   flask_active: number | null;
@@ -103,6 +106,9 @@ function countryFromRow(row: CountryRow): CountrySnapshot {
     infected: row.infected,
     zombies: row.zombies,
     publicOrder: row.public_order,
+    borderStatus: row.border_status,
+    airportStatus: row.airport_status,
+    portStatus: row.port_status,
     governmentActions: [],
     cureResearch: row.cure_funding === null || row.cure_allocation === null
       || row.flask_active === null || row.flask_inactive === null || row.flask_destroyed === null
@@ -174,8 +180,8 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
         (session_id, day, country_id, country_index, current_population,
          original_population, healthy_population, dead_population, infected, zombies,
          cure_funding, cure_allocation, flask_active, flask_inactive, flask_destroyed,
-         public_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         public_order, border_status, airport_status, port_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertAction = this.db.prepare(`
       INSERT INTO government_action_events
@@ -201,6 +207,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
           country.cureResearch?.flasks.inactive ?? null,
           country.cureResearch?.flasks.destroyed ?? null,
           country.publicOrder,
+          country.borderStatus, country.airportStatus, country.portStatus,
         );
         for (const [index, action] of (country.governmentActions ?? []).entries()) {
           insertAction.run(snapshot.sessionId, snapshot.day, country.id, index,

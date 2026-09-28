@@ -32,6 +32,7 @@ function snapshot(day: number, revision = 1, countries = 2): GameSnapshot {
       deadPopulation: 50 + index,
       zombies: 3 + index,
       publicOrder: null,
+      borderStatus: null, airportStatus: null, portStatus: null,
       governmentActions: [],
       cureResearch: null,
     })),

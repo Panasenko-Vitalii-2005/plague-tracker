@@ -106,6 +106,15 @@ The backend does not scale or round it. Missing values in older collector
 payloads and older SQLite rows become `null`, as do explicitly unreadable
 values. Each historical day retains its own observed value; later changes do
 not modify earlier snapshots.
+Each live, SSE and full-day country also contains `borderStatus`,
+`airportStatus`, and `portStatus`: each is exactly `"open"`, `"closed"`, or
+`null`. They are current country-level infrastructure flags, not Government
+Action history or disease-specific transport availability. `null` means
+unavailable, unreadable, or not applicable (for example, no airport or port);
+the backend never infers a state from actions or converts `null` to closed.
+Missing fields in older collector payloads normalize to `null`. Migration 5
+adds nullable, value-constrained columns to `country_snapshots`, so older
+SQLite rows read as `null`; each historical day keeps its own stored values.
 Each live and full-day country contains `governmentActions: [{ id, turn,
 removed }]` and `cureResearch: { funding, allocation, rank, flasks: { active,
 inactive, destroyed } } | null`. Action IDs are raw and never whitelisted.
@@ -198,7 +207,9 @@ line is logged and skipped; later lines continue normally. Validation requires
 a parseable ISO timestamp, a valid `yyyy-MM-dd` game date, non-negative safe
 integer `day`, turns and population values, finite `cureProgress` in `0..100`,
 `publicOrder` either null or finite in `0..1`, non-empty country IDs, and no
-duplicate IDs. It does not require exactly 58 countries. Raw IDs are passed
+duplicate IDs. Infrastructure statuses accept only exact `"open"`, `"closed"`,
+or `null` (and normalize missing fields to `null`); other strings and types
+reject the snapshot. It does not require exactly 58 countries. Raw IDs are passed
 through unchanged.
 
 Stderr has its own line reader and is never parsed as a snapshot. Diagnostic

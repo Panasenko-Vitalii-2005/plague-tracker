@@ -28,6 +28,7 @@ function snapshot(
       infected: revision,
       zombies: 0,
       publicOrder: null,
+      borderStatus: null, airportStatus: null, portStatus: null,
       governmentActions: [],
       cureResearch: null,
     }],

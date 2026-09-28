@@ -26,7 +26,8 @@ function snapshot(day: number, revision = 1): GameSnapshot {
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
       infected: 10, deadPopulation: 0, zombies: 0,
-      publicOrder: null, governmentActions: [], cureResearch: null,
+      publicOrder: null, borderStatus: null, airportStatus: null, portStatus: null,
+      governmentActions: [], cureResearch: null,
     }],
   };
 }
@@ -168,6 +169,9 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
 
   const dispatched = snapshot(100, 1);
   dispatched.countries[0]!.publicOrder = 1;
+  dispatched.countries[0]!.borderStatus = 'closed';
+  dispatched.countries[0]!.airportStatus = 'open';
+  dispatched.countries[0]!.portStatus = null;
   dispatched.zombieHordeEvents = [{
     turn: 100, eventTurn: 1, diseaseId: 0,
     sourceCountryId: 'soudi_arabia', destinationCountryId: 'sudan', zombies: 77_868,
@@ -177,6 +181,9 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   const first = await events.next();
   const arrived = snapshot(100, 2);
   arrived.countries[0]!.publicOrder = 0.9951444;
+  arrived.countries[0]!.borderStatus = 'open';
+  arrived.countries[0]!.airportStatus = 'closed';
+  arrived.countries[0]!.portStatus = 'open';
   arrived.zombieHordeEvents = [{
     ...dispatched.zombieHordeEvents[0]!, arrivalTurn: 100, arrivalEventTurn: 2,
   }];
@@ -192,6 +199,10 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.zombieHordeEvents, arrived.zombieHordeEvents);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 1);
   assert.equal((second.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 0.9951444);
+  assert.deepEqual([first.data, second.data].map((value) => {
+    const country = (value as LiveSnapshotEvent).snapshot.countries[0]!;
+    return [country.borderStatus, country.airportStatus, country.portStatus];
+  }), [['closed', 'open', null], ['open', 'closed', 'open']]);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.id, 'soudi_arabia');
   assert.equal((first.data as LiveSnapshotEvent).sessionId, (nextDay.data as LiveSnapshotEvent).sessionId);
 

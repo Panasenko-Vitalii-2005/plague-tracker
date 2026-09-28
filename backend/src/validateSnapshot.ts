@@ -1,4 +1,4 @@
-import type { CountrySnapshot, GameSnapshot, ZombieHordeEvent } from './types.js';
+import type { CountrySnapshot, GameSnapshot, InfrastructureStatus, ZombieHordeEvent } from './types.js';
 import { withCureRanks } from './cureRanks.js';
 
 const populationFields = [
@@ -20,6 +20,12 @@ function nonNegativeSafeInteger(value: unknown): value is number {
 
 function finiteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function infrastructureStatus(value: unknown, label: string): InfrastructureStatus {
+  if (value === undefined || value === null) return null;
+  if (value === 'open' || value === 'closed') return value;
+  throw new SnapshotValidationError(`${label} must be "open", "closed", or null`);
 }
 
 function validTimestamp(value: unknown): value is string {
@@ -96,6 +102,9 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     if (publicOrder !== null && (!finiteNumber(publicOrder) || publicOrder < 0 || publicOrder > 1)) {
       throw new SnapshotValidationError(`countries[${position}].publicOrder must be null or finite between 0 and 1`);
     }
+    const borderStatus = infrastructureStatus(raw.borderStatus, `countries[${position}].borderStatus`);
+    const airportStatus = infrastructureStatus(raw.airportStatus, `countries[${position}].airportStatus`);
+    const portStatus = infrastructureStatus(raw.portStatus, `countries[${position}].portStatus`);
 
     const rawActions = raw.governmentActions === undefined ? [] : raw.governmentActions;
     if (!Array.isArray(rawActions) || rawActions.length > 1024) {
@@ -138,6 +147,9 @@ export function validateSnapshot(value: unknown): GameSnapshot {
       infected: raw.infected as number,
       zombies: raw.zombies as number,
       publicOrder,
+      borderStatus,
+      airportStatus,
+      portStatus,
       governmentActions,
       cureResearch,
     };

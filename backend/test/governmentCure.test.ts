@@ -20,6 +20,7 @@ function country(index: number, id: string, funding: number, day: number): Count
   return { index, id, currentPopulation: 900, originalPopulation: 1000,
     healthyPopulation: 700, infected: 200, deadPopulation: 100, zombies: 0,
     publicOrder: null,
+    borderStatus: null, airportStatus: null, portStatus: null,
     governmentActions: index === 0 ? [
       { id: 'infectious_disease_teams__mobilised', turn: day - 1, removed: true },
       { id: 'research_funding_10', turn: day, removed: false },
@@ -149,7 +150,7 @@ test('v1 SQLite rows migrate and read with empty actions and null cure data', (t
   const db = openDatabase(databasePath);
   t.after(() => { db.close(); rmSync(path.dirname(databasePath), { recursive: true, force: true }); });
   assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all(),
-    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
   const oldSnapshot = new SqliteSnapshotRepository(db).getByDay('old', 10);
   const country = oldSnapshot?.countries[0];
   assert.deepEqual(oldSnapshot?.zombieHordeEvents, []);

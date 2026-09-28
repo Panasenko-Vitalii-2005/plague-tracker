@@ -90,6 +90,17 @@ const migrations = [
         CHECK (public_order IS NULL OR (public_order >= 0 AND public_order <= 1));
     `,
   },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE country_snapshots ADD COLUMN border_status TEXT
+        CHECK (border_status IS NULL OR border_status IN ('open', 'closed'));
+      ALTER TABLE country_snapshots ADD COLUMN airport_status TEXT
+        CHECK (airport_status IS NULL OR airport_status IN ('open', 'closed'));
+      ALTER TABLE country_snapshots ADD COLUMN port_status TEXT
+        CHECK (port_status IS NULL OR port_status IN ('open', 'closed'));
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {
