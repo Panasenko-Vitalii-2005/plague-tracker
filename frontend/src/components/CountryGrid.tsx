@@ -1,7 +1,7 @@
 import type { CountrySnapshot } from "../api/types.ts";
 import { formatCountryName } from "../domain/countries.ts";
 import { countryStatusComposition } from "../domain/countryDonut.ts";
-import { formatPopulation } from "../domain/format.ts";
+import { formatPopulation, formatPublicOrder } from "../domain/format.ts";
 import {
   COUNTRY_REGIONS,
   countryBelongsToRegion,
@@ -113,6 +113,10 @@ function CountryCard({ country }: { country: CountrySnapshot }) {
               <dd>{formatPopulation(value)}</dd>
             </div>
           ))}
+          <div className="country-card-metric country-card-metric-public-order">
+            <dt>Public Order</dt>
+            <dd>{formatPublicOrder(country.publicOrder)}</dd>
+          </div>
         </dl>
 
         <CountryDonut country={country} />

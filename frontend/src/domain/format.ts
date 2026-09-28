@@ -10,6 +10,10 @@ export function formatPercent(value: number): string {
   return `${percentFormatter.format(value).replace(/[\u00a0\u202f]/g, ' ')}%`
 }
 
+export function formatPublicOrder(value: number | null): string {
+  return value === null ? 'N/A' : formatPercent(value * 100)
+}
+
 export function formatAxisPopulation(value: number): string {
   return axisFormatter.format(value)
 }

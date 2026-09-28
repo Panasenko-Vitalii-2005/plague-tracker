@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { mapCountryHistoryToChart, mapGlobalHistoryToChart } from '../src/domain/chart.ts'
 import { formatCountryName, resolveSessionCountry } from '../src/domain/countries.ts'
 import { countryOverview, globalPercentages, liveStatus, percentageOf, shortSessionId } from '../src/domain/dashboard.ts'
-import { formatAxisPopulation, formatPercent, formatPopulation } from '../src/domain/format.ts'
+import { formatAxisPopulation, formatPercent, formatPopulation, formatPublicOrder } from '../src/domain/format.ts'
 import { formatGovernmentAction, formatResearchAllocation, formatResearchBudget } from '../src/domain/countryResearch.ts'
 import { aggregateCountries } from '../src/domain/metrics.ts'
 
@@ -11,10 +11,10 @@ test('global live metrics are sums, independent of currentPopulation semantics',
   const values = aggregateCountries([
     { index: 0, id: 'morroco', currentPopulation: 999, originalPopulation: 100,
       healthyPopulation: 70, infected: 20, deadPopulation: 5, zombies: 1,
-      governmentActions: [], cureResearch: null },
+      publicOrder: null, governmentActions: [], cureResearch: null },
     { index: 1, id: 'philipines', currentPopulation: 1, originalPopulation: 200,
       healthyPopulation: 100, infected: 50, deadPopulation: 30, zombies: 4,
-      governmentActions: [], cureResearch: null },
+      publicOrder: null, governmentActions: [], cureResearch: null },
   ])
   assert.deepEqual(values, { healthy: 170, infected: 70, dead: 35, zombies: 5, originalPopulation: 300 })
 })
@@ -67,6 +67,12 @@ test('shared formatters use grouped populations and two-decimal cure', () => {
   assert.equal(formatPopulation(12_300_000), '12 300 000')
   assert.equal(formatPercent(25.51), '25,51%')
   assert.equal(formatAxisPopulation(1_200_000), '1.2M')
+  assert.equal(formatPublicOrder(1), '100,00%')
+  assert.equal(formatPublicOrder(0), '0,00%')
+  assert.equal(formatPublicOrder(0.9497843), '94,98%')
+  assert.equal(formatPublicOrder(0.50941885), '50,94%')
+  assert.equal(formatPublicOrder(0.4627481), '46,27%')
+  assert.equal(formatPublicOrder(null), 'N/A')
 })
 
 test('research formatting keeps numeric precision and accepts unknown raw action IDs', () => {

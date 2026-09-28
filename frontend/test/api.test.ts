@@ -49,6 +49,7 @@ test('live response parsing keeps raw country ID unchanged', () => {
     snapshot,
   })
   assert.equal(value.snapshot?.countries[0]?.id, 'soudi_arabia')
+  assert.equal(value.snapshot?.countries[0]?.publicOrder, null)
   assert.equal(value.snapshot?.cureProgress, 25.51)
   assert.throws(() => parseLiveState({ collector: { running: true, lastError: null }, session: null,
     snapshot: { ...snapshot, countries: [{ ...country, infected: 'twenty' }] } }), /country.infected/)
@@ -57,13 +58,30 @@ test('live response parsing keeps raw country ID unchanged', () => {
 test('full historical snapshot parser validates every field and keeps raw country IDs', () => {
   const parsed = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot })
   assert.equal(parsed.sessionId, 'session-a')
-  assert.deepEqual(parsed.countries, [country])
+  assert.deepEqual(parsed.countries, [{ ...country, publicOrder: null }])
   for (const [key, value] of Object.entries({ sessionId: 4, capturedAt: 4, day: '10', gameDate: 4,
     diseaseTurn: '12', eventTurn: '14', cureProgress: '25', countries: null })) {
     assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, [key]: value }))
   }
   assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
     countries: [{ ...country, infected: '20' }] }), /country.infected/)
+})
+
+test('public order parser preserves raw fractions and normalizes legacy/null values', () => {
+  const states = [
+    { ...country, publicOrder: 1 },
+    { ...country, id: 'egypt', index: 3, publicOrder: 0.9497843 },
+    { ...country, id: 'peru', index: 4, publicOrder: 0 },
+    { ...country, id: 'russia', index: 5, publicOrder: null },
+    { ...country, id: 'ukraine', index: 6 },
+  ]
+  const parsed = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, countries: states })
+  assert.deepEqual(parsed.countries.map((item) => item.publicOrder), [1, 0.9497843, 0, null, null])
+  assert.equal(parsed.countries[1]?.publicOrder, 0.9497843)
+  for (const bad of [-0.01, 1.01, '0.5', Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      countries: [{ ...country, publicOrder: bad }] }), /country.publicOrder/)
+  }
 })
 
 test('live and historical parsers retain government actions and cure research, including legacy null', () => {

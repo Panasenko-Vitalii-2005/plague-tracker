@@ -1,11 +1,11 @@
-import type { CountryHistoryPoint, CountrySnapshot } from '../api/types.ts'
+import type { CountrySnapshot } from '../api/types.ts'
 import { formatCountryName } from '../domain/countries.ts'
 import { countryOverview } from '../domain/dashboard.ts'
-import { formatPercent, formatPopulation } from '../domain/format.ts'
+import { formatPercent, formatPopulation, formatPublicOrder } from '../domain/format.ts'
 
 export function CountryOverview({ id, country, context }: {
   id: string
-  country: CountrySnapshot | CountryHistoryPoint
+  country: CountrySnapshot
   context: string
 }) {
   const values = countryOverview(country)
@@ -25,6 +25,7 @@ export function CountryOverview({ id, country, context }: {
     <div className="country-population-foot">
       <span>Original population <strong>{formatPopulation(values.originalPopulation)}</strong></span>
       <span>Current population <strong>{formatPopulation(values.currentPopulation)}</strong></span>
+      <span>Public Order <strong>{formatPublicOrder(country.publicOrder)}</strong></span>
     </div>
   </section>
 }

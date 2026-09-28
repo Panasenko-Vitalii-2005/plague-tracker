@@ -61,6 +61,11 @@ export function parseCollectorStatus(value: unknown): CollectorStatus {
 function parseCountry(value: unknown): CountrySnapshot {
   const data = record(value, 'country')
   const cureResearch = data.cureResearch === null ? null : parseCureResearch(data.cureResearch)
+  const publicOrder = data.publicOrder === undefined || data.publicOrder === null
+    ? null : number(data.publicOrder, 'country.publicOrder')
+  if (publicOrder !== null && (publicOrder < 0 || publicOrder > 1)) {
+    throw new Error('Invalid country.publicOrder: expected a fraction from 0 to 1')
+  }
   return {
     index: number(data.index, 'country.index'),
     id: string(data.id, 'country.id'),
@@ -70,6 +75,7 @@ function parseCountry(value: unknown): CountrySnapshot {
     deadPopulation: number(data.deadPopulation, 'country.deadPopulation'),
     infected: number(data.infected, 'country.infected'),
     zombies: number(data.zombies, 'country.zombies'),
+    publicOrder,
     governmentActions: array(data.governmentActions, 'country.governmentActions').map((value) => {
       const action = record(value, 'country.governmentActions event')
       return { id: string(action.id, 'government action.id'), turn: integer(action.turn, 'government action.turn'),
