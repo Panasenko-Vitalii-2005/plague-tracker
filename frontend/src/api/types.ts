@@ -24,6 +24,18 @@ export interface CountrySnapshot {
   cureResearch: CountryCureResearch | null
 }
 
+export interface ZombieHordeEvent {
+  turn: number
+  eventTurn: number
+  diseaseId: number
+  sourceCountryId: string
+  destinationCountryId: string
+  zombies: number
+  vehicleId: number | null
+  arrivalTurn: number | null
+  arrivalEventTurn: number | null
+}
+
 export interface LiveSnapshot {
   capturedAt: string
   diseaseTurn: number
@@ -32,6 +44,7 @@ export interface LiveSnapshot {
   gameDate: string
   cureProgress: number
   countries: CountrySnapshot[]
+  zombieHordeEvents: ZombieHordeEvent[]
 }
 
 export interface HistoricalSnapshot extends LiveSnapshot {

@@ -11,6 +11,7 @@ import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
 import { SessionSummary } from './SessionSummary.tsx'
+import { ZombieHordeMovements } from './ZombieHordeMovements.tsx'
 
 export function LivePanel({ live }: { live: LiveGameView }) {
   const [preferredCountryId, setPreferredCountryId] = useState<string | null>(null)
@@ -48,6 +49,8 @@ export function LivePanel({ live }: { live: LiveGameView }) {
           tone="zombies" quiet={metrics.zombies === 0} />
       </div>
     </section>
+    <ZombieHordeMovements events={snapshot.zombieHordeEvents}
+      datesByDay={new Map([[snapshot.day, snapshot.gameDate]])} />
     <CountryGrid countries={snapshot.countries} />
     <div className="country-layout">
       <section className="surface country-pick-panel" aria-label="Choose live country">

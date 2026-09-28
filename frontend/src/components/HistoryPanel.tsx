@@ -14,6 +14,7 @@ import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
 import { SessionSummary } from './SessionSummary.tsx'
+import { ZombieHordeMovements } from './ZombieHordeMovements.tsx'
 
 const HistoryChart = lazy(() => import('./HistoryChart.tsx').then((module) => ({ default: module.HistoryChart })))
 const CountryHistoryChart = lazy(() => import('./CountryHistoryChart.tsx')
@@ -145,6 +146,8 @@ export function HistoryDashboard({ sessions, session, global, countries, country
               tone="zombies" quiet={metrics.zombies === 0} />
           </div>
         </section>
+        <ZombieHordeMovements events={snapshot.zombieHordeEvents}
+          datesByDay={new Map(history.map((point) => [point.day, point.gameDate]))} />
         <CountryGrid countries={snapshot.countries} />
       </>}
       {history.length > 0 && <>

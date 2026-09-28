@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { LiveGameView } from '../src/api/liveStore.ts'
 import type { CountryHistoryResponse, CountrySnapshot, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
-  SessionHistoryResponse, SessionSummary } from '../src/api/types.ts'
+  SessionHistoryResponse, SessionSummary, ZombieHordeEvent } from '../src/api/types.ts'
 import { countryStatusComposition } from '../src/domain/countryDonut.ts'
 import type { Resource } from '../src/hooks/useHistory.ts'
 import type { HistoricalReplay } from '../src/hooks/useReplay.ts'
@@ -16,6 +16,7 @@ let CureProgress: typeof import('../src/components/CureProgress.tsx').CureProgre
 let LivePanel: typeof import('../src/components/LivePanel.tsx').LivePanel
 let HistoryDashboard: typeof import('../src/components/HistoryPanel.tsx').HistoryDashboard
 let CountryGrid: typeof import('../src/components/CountryGrid.tsx').CountryGrid
+let ZombieHordeMovements: typeof import('../src/components/ZombieHordeMovements.tsx').ZombieHordeMovements
 
 before(async () => {
   server = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: 'custom' })
@@ -24,6 +25,7 @@ before(async () => {
   LivePanel = (await server.ssrLoadModule('/src/components/LivePanel.tsx')).LivePanel
   HistoryDashboard = (await server.ssrLoadModule('/src/components/HistoryPanel.tsx')).HistoryDashboard
   CountryGrid = (await server.ssrLoadModule('/src/components/CountryGrid.tsx')).CountryGrid
+  ZombieHordeMovements = (await server.ssrLoadModule('/src/components/ZombieHordeMovements.tsx')).ZombieHordeMovements
 })
 after(async () => { await server?.close() })
 
@@ -40,6 +42,37 @@ const countryCardFixture = (id: string, index: number,
   id, index, currentPopulation: 80_000_000, originalPopulation: 100_000_000,
   healthyPopulation: 20_000_000, infected: 55_000_000, zombies: 0,
   deadPopulation: 5_000_000, governmentActions: [], cureResearch: null, ...overrides,
+})
+
+const horde: ZombieHordeEvent = { turn: 10, eventTurn: 17, diseaseId: 0,
+  sourceCountryId: 'soudi_arabia', destinationCountryId: 'south_east_asia', zombies: 358_580,
+  vehicleId: 1178, arrivalTurn: null, arrivalEventTurn: null }
+
+test('horde section handles empty, in-transit and arrived events without technical metadata', () => {
+  const empty = renderToStaticMarkup(createElement(ZombieHordeMovements, { events: [] }))
+  assert.match(empty, /Zombie Horde Movements/)
+  assert.match(empty, /No zombie horde movements recorded yet/)
+  assert.doesNotMatch(empty, /<ol/)
+
+  const transit = renderToStaticMarkup(createElement(ZombieHordeMovements, { events: [horde] }))
+  assert.match(transit, /Soudi Arabia/)
+  assert.match(transit, /South East Asia/)
+  assert.match(transit, /358 580 zombies/)
+  assert.match(transit, /Departed: Day 10/)
+  assert.match(transit, /In transit/)
+  assert.doesNotMatch(transit, /soudi_arabia|south_east_asia|1178|diseaseId|eventTurn|Arrived:/)
+
+  const arrived = { ...horde, arrivalTurn: 13, arrivalEventTurn: 21 }
+  const duplicate = renderToStaticMarkup(createElement(ZombieHordeMovements, {
+    events: [horde, arrived, { ...arrived }],
+    datesByDay: new Map([[10, '2027-03-07'], [13, '2027-03-10']]),
+  }))
+  assert.equal((duplicate.match(/class="horde-item"/g) ?? []).length, 3)
+  assert.equal((duplicate.match(/358 580 zombies/g) ?? []).length, 3)
+  assert.ok(duplicate.indexOf('In transit') < duplicate.indexOf('Arrived: Day 13'))
+  assert.match(duplicate, /Departed: Day 10 · 2027-03-07/)
+  assert.match(duplicate, /Arrived: Day 13 · 2027-03-10/)
+  assert.doesNotMatch(duplicate, /1178|arrivalEventTurn|eventTurn/)
 })
 
 test('all country cards render in index order with readable names and current population', () => {
@@ -184,7 +217,7 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
   const live: LiveGameView = { connectionState: 'live', collectorStatus: { running: true, lastError: null },
     session: null, sessionId: '12345678-aaaa', error: null,
     snapshot: { capturedAt: '2026-09-23T00:00:00Z', day: 184, gameDate: '2028-04-12', diseaseTurn: 200,
-      eventTurn: 211, cureProgress: 34.2769, countries: [
+      eventTurn: 211, cureProgress: 34.2769, zombieHordeEvents: [horde], countries: [
         { index: 0, id: 'south_africa', originalPopulation: 1000, currentPopulation: 990,
           healthyPopulation: 800, infected: 170, deadPopulation: 20, zombies: 0,
           governmentActions: [], cureResearch: null },
@@ -201,6 +234,9 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
   assert.match(html, /South Africa country card/)
   assert.match(html, /<dt>Population<\/dt><dd>990<\/dd>/)
   assert.match(html, /<dt>Infected<\/dt><dd>170<\/dd>/)
+  assert.match(html, /Zombie Horde Movements/)
+  assert.match(html, /Soudi Arabia/)
+  assert.match(html, /In transit/)
 })
 
 test('history dashboard renders saved session, global values and historical country data', () => {
@@ -225,6 +261,7 @@ test('history dashboard renders saved session, global values and historical coun
   ] })
   const selected: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:01:00Z',
     day: 13, gameDate: '2026-01-13', diseaseTurn: 12, eventTurn: 13, cureProgress: 12.3456,
+    zombieHordeEvents: [{ ...horde, arrivalTurn: 13, arrivalEventTurn: 21 }],
     countries: [{ index: 1, id: 'south_africa', originalPopulation: 100, currentPopulation: 90,
       healthyPopulation: 60, infected: 30, deadPopulation: 10, zombies: 0,
       governmentActions: [{ id: 'urban_evacuation_ordered', turn: 13, removed: false }],
@@ -248,9 +285,12 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(html, /<dt>Infected<\/dt><dd>30<\/dd>/)
   assert.match(html, /\$2,500\.99/)
   assert.match(html, /Urban Evacuation Ordered/)
+  assert.match(html, /Arrived: Day 13 · 2026-01-13/)
+  assert.match(html, /Departed: Day 10 · 2026-01-10/)
   assert.doesNotMatch(html, /day 11/i)
 
   const prior: HistoricalSnapshot = { ...selected, day: 10, gameDate: '2026-01-10', cureProgress: 2,
+    zombieHordeEvents: [horde],
     countries: [{ ...selected.countries[0]!, healthyPopulation: 95, infected: 5,
       governmentActions: [{ id: 'research_funding_2', turn: 10, removed: false }],
       cureResearch: { funding: 1564.9822, allocation: 0.2, rank: 9,
@@ -270,6 +310,8 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(priorHtml, /<dt>Rank<\/dt><dd>#9<\/dd>/)
   assert.equal((priorHtml.match(/aria-label="Active research flask"/g) ?? []).length, 2)
   assert.match(priorHtml, /Research Funding 2/)
+  assert.match(priorHtml, /In transit/)
+  assert.doesNotMatch(priorHtml, /Arrived: Day 13/)
   assert.doesNotMatch(priorHtml, /\$2,500\.99|Urban Evacuation Ordered/)
 
   const absentHtml = renderToStaticMarkup(createElement(HistoryDashboard, { sessions, session, global,

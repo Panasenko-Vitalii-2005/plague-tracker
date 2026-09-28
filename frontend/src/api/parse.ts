@@ -3,6 +3,7 @@ import type {
   GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
+  ZombieHordeEvent,
 } from './types.ts'
 
 type RecordValue = Record<string, unknown>
@@ -95,6 +96,33 @@ function parseCureResearch(value: unknown): CountryCureResearch {
   }
 }
 
+function parseZombieHordeEvent(value: unknown): ZombieHordeEvent {
+  const data = record(value, 'zombie horde event')
+  const turn = nonNegativeInteger(data.turn, 'zombie horde.turn')
+  const arrivalTurn = data.arrivalTurn == null ? null
+    : nonNegativeInteger(data.arrivalTurn, 'zombie horde.arrivalTurn')
+  if (arrivalTurn !== null && arrivalTurn < turn) {
+    throw new Error('Invalid zombie horde.arrivalTurn: expected at least turn')
+  }
+  const sourceCountryId = string(data.sourceCountryId, 'zombie horde.sourceCountryId')
+  const destinationCountryId = string(data.destinationCountryId, 'zombie horde.destinationCountryId')
+  if (!sourceCountryId.trim() || !destinationCountryId.trim()) {
+    throw new Error('Invalid zombie horde country ID: expected non-empty string')
+  }
+  return {
+    turn,
+    eventTurn: nonNegativeInteger(data.eventTurn, 'zombie horde.eventTurn'),
+    diseaseId: nonNegativeInteger(data.diseaseId, 'zombie horde.diseaseId'),
+    sourceCountryId,
+    destinationCountryId,
+    zombies: nonNegativeInteger(data.zombies, 'zombie horde.zombies'),
+    vehicleId: data.vehicleId == null ? null : nonNegativeInteger(data.vehicleId, 'zombie horde.vehicleId'),
+    arrivalTurn,
+    arrivalEventTurn: data.arrivalEventTurn == null ? null
+      : nonNegativeInteger(data.arrivalEventTurn, 'zombie horde.arrivalEventTurn'),
+  }
+}
+
 export function parseLiveSnapshot(value: unknown): LiveSnapshot {
   const data = record(value, 'live snapshot')
   return {
@@ -105,6 +133,8 @@ export function parseLiveSnapshot(value: unknown): LiveSnapshot {
     gameDate: string(data.gameDate, 'gameDate'),
     cureProgress: number(data.cureProgress, 'cureProgress'),
     countries: array(data.countries, 'countries').map(parseCountry),
+    zombieHordeEvents: (data.zombieHordeEvents === undefined ? []
+      : array(data.zombieHordeEvents, 'zombieHordeEvents')).map(parseZombieHordeEvent),
   }
 }
 

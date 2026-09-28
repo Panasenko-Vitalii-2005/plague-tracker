@@ -89,6 +89,30 @@ test('live and historical parsers retain government actions and cure research, i
   }
 })
 
+test('horde parsing preserves replay order, duplicates and lifecycle state in live and history', () => {
+  const dispatch = { turn: 160, eventTurn: 229, diseaseId: 0,
+    sourceCountryId: 'soudi_arabia', destinationCountryId: 'australia', zombies: 358580 }
+  const arrived = { ...dispatch, vehicleId: 1178, arrivalTurn: 174, arrivalEventTurn: 249 }
+  const live = parseLiveState({ collector: { running: true, lastError: null }, session: null,
+    snapshot: { ...snapshot, zombieHordeEvents: [dispatch, arrived, { ...arrived }] } })
+  assert.deepEqual(live.snapshot?.zombieHordeEvents, [
+    { ...dispatch, vehicleId: null, arrivalTurn: null, arrivalEventTurn: null }, arrived, arrived,
+  ])
+  const historical = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+    zombieHordeEvents: [dispatch] })
+  assert.equal(historical.zombieHordeEvents[0]?.arrivalTurn, null)
+  assert.deepEqual(parseHistoricalSnapshot({ sessionId: 'legacy', ...snapshot }).zombieHordeEvents, [])
+
+  for (const event of [{ ...dispatch, turn: -1 }, { ...dispatch, zombies: '358580' },
+    { ...dispatch, sourceCountryId: ' ' }, { ...arrived, arrivalTurn: 159 },
+    { ...arrived, vehicleId: -1 }, { ...arrived, arrivalEventTurn: -1 }]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      zombieHordeEvents: [event] }), /zombie horde/)
+  }
+  assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+    zombieHordeEvents: null }), /zombieHordeEvents/)
+})
+
 test('full historical snapshot client requests the observed day', async () => {
   const original = globalThis.fetch
   const urls: string[] = []
