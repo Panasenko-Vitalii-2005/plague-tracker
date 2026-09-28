@@ -31,8 +31,12 @@ const snapshot = { capturedAt: '2026-09-23T00:00:00Z', day: 5, gameDate: '2026-0
 test('SSE parses state, snapshot and status and removes every listener on cleanup', () => {
   const source = new FakeEventSource()
   const events: string[] = []
+  const infectionLists: unknown[] = []
   const end = connectLiveStream({
-    onEvent: (event) => events.push(event.type),
+    onEvent: (event) => {
+      events.push(event.type)
+      if (event.type === 'snapshot') infectionLists.push(event.data.snapshot.countryInfectionEvents)
+    },
     onOpen: () => events.push('open'),
     onReconnect: () => events.push('reconnect'),
     onProtocolError: (error) => { throw error },
@@ -40,10 +44,12 @@ test('SSE parses state, snapshot and status and removes every listener on cleanu
   assert.equal(source.listenerCount(), 5)
   source.emit('open')
   source.emit('state', { collector: { running: false, lastError: null }, session: null, snapshot: null })
-  source.emit('snapshot', { sessionId: 'a', snapshot })
+  const infection = { countryId: 'greenland', turn: 270, eventTurn: 385, diseaseId: 0 }
+  source.emit('snapshot', { sessionId: 'a', snapshot: { ...snapshot, countryInfectionEvents: [infection] } })
   source.emit('status', { running: false, lastError: null })
   source.emit('error')
   assert.deepEqual(events, ['open', 'state', 'snapshot', 'status', 'reconnect'])
+  assert.deepEqual(infectionLists, [[infection]])
   end()
   assert.equal(source.closed, true)
   assert.equal(source.listenerCount(), 0)

@@ -10,6 +10,7 @@ import { useReplay, type HistoricalReplay } from '../hooks/useReplay.ts'
 import { CountryOverview } from './CountryOverview.tsx'
 import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
+import { CountryInfectionHistory } from './CountryInfectionHistory.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
@@ -146,6 +147,7 @@ export function HistoryDashboard({ sessions, session, global, countries, country
               tone="zombies" quiet={metrics.zombies === 0} />
           </div>
         </section>
+        <CountryInfectionHistory events={snapshot.countryInfectionEvents} />
         <ZombieHordeMovements events={snapshot.zombieHordeEvents}
           datesByDay={new Map(history.map((point) => [point.day, point.gameDate]))} />
         <CountryGrid countries={snapshot.countries} />

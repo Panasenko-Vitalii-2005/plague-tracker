@@ -53,6 +53,7 @@ test('live response parsing keeps raw country ID unchanged', () => {
   assert.deepEqual([value.snapshot?.countries[0]?.borderStatus,
     value.snapshot?.countries[0]?.airportStatus, value.snapshot?.countries[0]?.portStatus], [null, null, null])
   assert.equal(value.snapshot?.cureProgress, 25.51)
+  assert.deepEqual(value.snapshot?.countryInfectionEvents, [])
   assert.throws(() => parseLiveState({ collector: { running: true, lastError: null }, session: null,
     snapshot: { ...snapshot, countries: [{ ...country, infected: 'twenty' }] } }), /country.infected/)
 })
@@ -153,6 +154,39 @@ test('horde parsing preserves replay order, duplicates and lifecycle state in li
   }
   assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
     zombieHordeEvents: null }), /zombieHordeEvents/)
+})
+
+test('country infection parsing preserves raw IDs, order and duplicates in live and history', () => {
+  const saudi = { countryId: 'soudi_arabia', turn: 1, eventTurn: 1, diseaseId: 0 }
+  const middleEast = { countryId: 'middle_east', turn: 69, eventTurn: 98, diseaseId: 0 }
+  const eastAfrica = { countryId: 'east_africa', turn: 74, eventTurn: 105, diseaseId: 0 }
+  const greenland = { countryId: 'greenland', turn: 270, eventTurn: 385, diseaseId: 0 }
+  const events = [saudi, middleEast, { ...middleEast }, eastAfrica, greenland]
+  const live = parseLiveState({ collector: { running: true, lastError: null }, session: null,
+    snapshot: { ...snapshot, countryInfectionEvents: events } })
+  const history = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+    countryInfectionEvents: events })
+  assert.deepEqual(live.snapshot?.countryInfectionEvents, events)
+  assert.deepEqual(history.countryInfectionEvents, events)
+  assert.equal(history.countryInfectionEvents[1]?.countryId, 'middle_east')
+  assert.deepEqual(parseHistoricalSnapshot({ sessionId: 'legacy', ...snapshot }).countryInfectionEvents, [])
+})
+
+test('country infection parser rejects malformed explicit values', () => {
+  const valid = { countryId: 'greenland', turn: 270, eventTurn: 385, diseaseId: 0 }
+  for (const invalid of [
+    { ...valid, countryId: '' }, { ...valid, countryId: ' ' }, { ...valid, countryId: 7 },
+    { ...valid, turn: 1.5 }, { ...valid, turn: '270' },
+    { ...valid, eventTurn: null }, { ...valid, eventTurn: Number.NaN },
+    { ...valid, diseaseId: Number.POSITIVE_INFINITY },
+  ]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      countryInfectionEvents: [invalid] }), /country infection/)
+  }
+  for (const invalidList of [null, {}, 'INFECT: greenland']) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      countryInfectionEvents: invalidList }), /countryInfectionEvents/)
+  }
 })
 
 test('full historical snapshot client requests the observed day', async () => {

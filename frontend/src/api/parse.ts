@@ -1,5 +1,5 @@
 import type {
-  CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountrySnapshot,
+  CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot,
   InfrastructureStatus,
   GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
@@ -139,6 +139,20 @@ function parseZombieHordeEvent(value: unknown): ZombieHordeEvent {
   }
 }
 
+function parseCountryInfectionEvent(value: unknown): CountryInfectionEvent {
+  const data = record(value, 'country infection event')
+  const countryId = string(data.countryId, 'country infection.countryId')
+  if (!countryId.trim() || countryId.length > 4096) {
+    throw new Error('Invalid country infection.countryId: expected non-empty string')
+  }
+  return {
+    countryId,
+    turn: integer(data.turn, 'country infection.turn'),
+    eventTurn: integer(data.eventTurn, 'country infection.eventTurn'),
+    diseaseId: integer(data.diseaseId, 'country infection.diseaseId'),
+  }
+}
+
 export function parseLiveSnapshot(value: unknown): LiveSnapshot {
   const data = record(value, 'live snapshot')
   return {
@@ -151,6 +165,8 @@ export function parseLiveSnapshot(value: unknown): LiveSnapshot {
     countries: array(data.countries, 'countries').map(parseCountry),
     zombieHordeEvents: (data.zombieHordeEvents === undefined ? []
       : array(data.zombieHordeEvents, 'zombieHordeEvents')).map(parseZombieHordeEvent),
+    countryInfectionEvents: (data.countryInfectionEvents === undefined ? []
+      : array(data.countryInfectionEvents, 'countryInfectionEvents')).map(parseCountryInfectionEvent),
   }
 }
 

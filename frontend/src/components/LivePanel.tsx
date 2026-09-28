@@ -7,6 +7,7 @@ import { aggregateCountries } from '../domain/metrics.ts'
 import { CountryOverview } from './CountryOverview.tsx'
 import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
+import { CountryInfectionHistory } from './CountryInfectionHistory.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
@@ -49,6 +50,7 @@ export function LivePanel({ live }: { live: LiveGameView }) {
           tone="zombies" quiet={metrics.zombies === 0} />
       </div>
     </section>
+    <CountryInfectionHistory events={snapshot.countryInfectionEvents} />
     <ZombieHordeMovements events={snapshot.zombieHordeEvents}
       datesByDay={new Map([[snapshot.day, snapshot.gameDate]])} />
     <CountryGrid countries={snapshot.countries} />

@@ -59,3 +59,16 @@ the selected session's country list from `/sessions/:sessionId/countries`, so
 country selection and history work when no game is running. Display labels
 only replace underscores with spaces and capitalize words; no 58-country
 mapping is hardcoded.
+
+The global **Country Infection History** section appears in LIVE and HISTORY
+without changing country cards. It reads the selected snapshot's cumulative
+`countryInfectionEvents` in backend replay order, including duplicates, and
+shows friendly country names with the recorded game turn (`Day N`). The list
+is compact and scrollable; an empty selected snapshot says “No infection
+history available for this snapshot.” LIVE uses only the current SSE snapshot;
+HISTORY uses only the selected saved day, so an older day is never enriched
+with markers learned later. These are the game's first *detected* infection
+markers in supported ordinary single-player play, not necessarily the
+physical instant of first infection. Source country and route are unavailable
+and are not inferred or displayed. Missing lists in legacy API responses are
+treated as empty.
