@@ -28,6 +28,7 @@ function snapshot(day: number, events: ZombieHordeEvent[] = []): GameSnapshot {
     cureProgress: 0.5,
     zombieHordeEvents: events,
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: [{ index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90, deadPopulation: 0,
       infected: 10, zombies: 0, publicOrder: null,

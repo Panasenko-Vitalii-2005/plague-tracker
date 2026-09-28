@@ -22,6 +22,7 @@ function snapshot(day: number, revision = 1, countries = 2): GameSnapshot {
     cureProgress: revision * 12.5,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: Array.from({ length: countries }, (_, index) => ({
       index,
       id: ids[index] ?? `country_${index}`,

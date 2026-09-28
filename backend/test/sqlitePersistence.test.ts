@@ -43,6 +43,7 @@ function snapshot(day: number, revision = 1, countryCount = 58): GameSnapshot {
     cureProgress: revision * 1.25,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: Array.from({ length: countryCount }, (_, index) => ({
       index,
       id: ids[index] ?? `country_${index}`,
@@ -81,7 +82,7 @@ test('database path config, migrations, foreign keys and WAL', (t) => {
   assert.equal(store.db.pragma('foreign_keys', { simple: true }), 1);
   assert.equal(store.db.pragma('journal_mode', { simple: true }), 'wal');
   assert.deepEqual(store.db.prepare<[], { version: number }>('SELECT version FROM schema_migrations').all(),
-    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }]);
+    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
   assert.ok(existsSync(store.databasePath));
   store.reopen();
   assert.equal(rowCount(store.db, 'game_sessions'), 0);

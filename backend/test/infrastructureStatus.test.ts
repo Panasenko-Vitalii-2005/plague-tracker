@@ -23,6 +23,7 @@ function rawSnapshot(day: number, statuses: Array<[unknown, unknown, unknown]>) 
     cureProgress: 0.5,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: statuses.map(([borderStatus, airportStatus, portStatus], index) => ({
       index, id: ['egypt', 'russia'][index] ?? `country_${index}`,
       currentPopulation: 100, originalPopulation: 100,
@@ -158,7 +159,7 @@ test('migration 5 upgrades version-4 rows without inventing infrastructure state
   const db = openDatabase(databasePath);
   t.after(() => { db.close(); rmSync(directory, { recursive: true, force: true }); });
   assert.equal(db.prepare<[], { version: number }>(
-    'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1').get()!.version, 6);
+    'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1').get()!.version, 7);
   assert.deepEqual(new SqliteSnapshotRepository(db).getByDay('legacy-session', 10)!.countries.map(statuses),
     [[null, null, null]]);
   assert.deepEqual(new SqliteSnapshotRepository(db).getByDay('legacy-session', 10)!.countryInfectionEvents,

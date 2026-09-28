@@ -19,6 +19,7 @@ function snapshot(
     cureProgress: changes.cureProgress ?? 0,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: [{
       index: 0,
       id: 'soudi_arabia',

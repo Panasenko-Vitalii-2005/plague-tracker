@@ -49,6 +49,24 @@ export interface CountryInfectionEvent {
   diseaseId: number;
 }
 
+export type GameMilestoneType =
+  | 'virus_dna_detected'
+  | 'more_infectious_than_tb'
+  | 'more_infectious_than_hiv'
+  | 'disease_detected'
+  | 'first_death'
+  | 'more_infectious_than_common_cold'
+  | 'worse_than_black_death'
+  | 'worse_than_spanish_flu'
+  | 'worse_than_smallpox';
+
+export interface GameMilestone {
+  type: GameMilestoneType;
+  turn: number;
+  countryId: string | null;
+  diseaseId: number;
+}
+
 export interface GameSnapshot {
   capturedAt: string;
   diseaseTurn: number;
@@ -59,6 +77,7 @@ export interface GameSnapshot {
   countries: CountrySnapshot[];
   zombieHordeEvents: ZombieHordeEvent[];
   countryInfectionEvents: CountryInfectionEvent[];
+  gameMilestones: GameMilestone[];
 }
 
 export interface GameSession {

@@ -23,6 +23,7 @@ function snapshot(day: number, revision = 1): GameSnapshot {
     cureProgress: revision,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: [{
       index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90,
@@ -181,6 +182,9 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   dispatched.countryInfectionEvents = [
     { countryId: 'soudi_arabia', turn: 1, eventTurn: 1, diseaseId: 0 },
   ];
+  dispatched.gameMilestones = [
+    { type: 'virus_dna_detected', turn: 11, countryId: null, diseaseId: 0 },
+  ];
   collector.emitSnapshot(dispatched);
   const first = await events.next();
   const arrived = snapshot(100, 2);
@@ -194,6 +198,10 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
   arrived.countryInfectionEvents = [
     ...dispatched.countryInfectionEvents,
     { countryId: 'middle_east', turn: 69, eventTurn: 98, diseaseId: 0 },
+  ];
+  arrived.gameMilestones = [
+    ...dispatched.gameMilestones,
+    { type: 'disease_detected', turn: 150, countryId: 'soudi_arabia', diseaseId: 0 },
   ];
   collector.emitSnapshot(arrived);
   const second = await events.next();
@@ -209,6 +217,10 @@ test('SSE streams state, every live update, reset session ID, status and keeps R
     dispatched.countryInfectionEvents);
   assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.countryInfectionEvents,
     arrived.countryInfectionEvents);
+  assert.deepEqual((first.data as LiveSnapshotEvent).snapshot.gameMilestones,
+    dispatched.gameMilestones);
+  assert.deepEqual((second.data as LiveSnapshotEvent).snapshot.gameMilestones,
+    arrived.gameMilestones);
   assert.equal((first.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 1);
   assert.equal((second.data as LiveSnapshotEvent).snapshot.countries[0]!.publicOrder, 0.9951444);
   assert.deepEqual([first.data, second.data].map((value) => {

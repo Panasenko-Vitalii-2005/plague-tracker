@@ -21,6 +21,8 @@ export type {
   GovernmentActionEvent,
   CountryCureResearch,
   ZombieHordeEvent,
+  GameMilestone,
+  GameMilestoneType,
   GameSnapshot,
   GameSession,
   HistoricalSnapshot,

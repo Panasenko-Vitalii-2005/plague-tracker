@@ -141,6 +141,19 @@ does not infer either. Replay order, duplicates, raw country IDs and integer
 values are preserved. Missing arrays from older collectors and older SQLite
 rows read as `[]`. Each historical day returns only the list stored with that
 day; later markers do not retroactively enrich earlier snapshots.
+`/api/v1/live` (`snapshot.gameMilestones`), normal SSE snapshot payloads,
+and the full-day route also expose the cumulative, ordered `gameMilestones`
+list. Each entry is `{ type, turn, countryId, diseaseId }`, with no
+`eventTurn`. The exact supported types are `virus_dna_detected`,
+`more_infectious_than_tb`, `more_infectious_than_hiv`, `disease_detected`,
+`first_death`, `more_infectious_than_common_cold`, `worse_than_black_death`,
+`worse_than_spanish_flu`, and `worse_than_smallpox`. Only
+`disease_detected` and `first_death` have a non-empty raw `countryId`;
+all other types require `null`. The backend does not infer context, sort,
+or deduplicate entries. Missing arrays from older collectors normalize to
+`[]`; Migration 7 adds `daily_snapshots.game_milestones_json` with an `[]`
+default for older rows. Each historical day returns only its stored list,
+without later milestones being added retroactively.
 All API errors have `{ "error": { "code": "...", "message": "..." } }`;
 unexpected errors are logged server-side and do not expose stack traces.
 

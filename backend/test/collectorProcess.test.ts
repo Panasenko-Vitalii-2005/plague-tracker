@@ -24,6 +24,7 @@ function snapshot(turn = 10, id = 'soudi_arabia'): GameSnapshot {
     cureProgress: 37.5,
     zombieHordeEvents: [],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: [{
       index: 0,
       id,
@@ -154,6 +155,20 @@ test('collector NDJSON carries cumulative country infection markers without dedu
   ];
   children[0]!.writeSnapshot(input);
   assert.deepEqual(consumer.getLatestSnapshot()?.countryInfectionEvents, input.countryInfectionEvents);
+  await consumer.stop();
+});
+
+test('collector NDJSON carries Game Milestones in archive order with duplicates', async () => {
+  const { consumer, children } = fixture();
+  await consumer.start();
+  const input = snapshot();
+  input.gameMilestones = [
+    { type: 'virus_dna_detected', turn: 11, countryId: null, diseaseId: 0 },
+    { type: 'disease_detected', turn: 150, countryId: 'soudi_arabia', diseaseId: 0 },
+    { type: 'disease_detected', turn: 150, countryId: 'soudi_arabia', diseaseId: 0 },
+  ];
+  children[0]!.writeSnapshot(input);
+  assert.deepEqual(consumer.getLatestSnapshot()?.gameMilestones, input.gameMilestones);
   await consumer.stop();
 });
 

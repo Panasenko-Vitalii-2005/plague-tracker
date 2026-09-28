@@ -1,4 +1,4 @@
-import type { CountryInfectionEvent, CountrySnapshot, GameSnapshot, InfrastructureStatus, ZombieHordeEvent } from './types.js';
+import type { CountryInfectionEvent, CountrySnapshot, GameMilestone, GameMilestoneType, GameSnapshot, InfrastructureStatus, ZombieHordeEvent } from './types.js';
 import { withCureRanks } from './cureRanks.js';
 
 const populationFields = [
@@ -9,6 +9,22 @@ const populationFields = [
   'infected',
   'zombies',
 ] as const;
+
+const gameMilestoneTypes = new Set<GameMilestoneType>([
+  'virus_dna_detected',
+  'more_infectious_than_tb',
+  'more_infectious_than_hiv',
+  'disease_detected',
+  'first_death',
+  'more_infectious_than_common_cold',
+  'worse_than_black_death',
+  'worse_than_spanish_flu',
+  'worse_than_smallpox',
+]);
+
+function isGameMilestoneType(value: unknown): value is GameMilestoneType {
+  return typeof value === 'string' && gameMilestoneTypes.has(value as GameMilestoneType);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -223,6 +239,38 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     };
   });
 
+  const rawMilestones = value.gameMilestones === undefined ? [] : value.gameMilestones;
+  if (!Array.isArray(rawMilestones) || rawMilestones.length > 100_000) {
+    throw new SnapshotValidationError('gameMilestones must be an array of at most 100000 events');
+  }
+  const gameMilestones: GameMilestone[] = rawMilestones.map((raw, index) => {
+    const prefix = `gameMilestones[${index}]`;
+    if (!isRecord(raw)) throw new SnapshotValidationError(`${prefix} must be an object`);
+    if (!isGameMilestoneType(raw.type)) {
+      throw new SnapshotValidationError(`${prefix}.type must be a supported game milestone type`);
+    }
+    for (const field of ['turn', 'diseaseId'] as const) {
+      if (typeof raw[field] !== 'number' || !Number.isSafeInteger(raw[field])) {
+        throw new SnapshotValidationError(`${prefix}.${field} must be a safe integer`);
+      }
+    }
+    const needsCountry = raw.type === 'disease_detected' || raw.type === 'first_death';
+    if (needsCountry) {
+      if (typeof raw.countryId !== 'string' || raw.countryId.trim().length === 0
+        || raw.countryId.length > 4096) {
+        throw new SnapshotValidationError(`${prefix}.countryId must be a non-empty string for ${raw.type}`);
+      }
+    } else if (raw.countryId !== null) {
+      throw new SnapshotValidationError(`${prefix}.countryId must be null for ${raw.type}`);
+    }
+    return {
+      type: raw.type,
+      turn: raw.turn as number,
+      countryId: raw.countryId as string | null,
+      diseaseId: raw.diseaseId as number,
+    };
+  });
+
   return {
     capturedAt: value.capturedAt,
     diseaseTurn: value.diseaseTurn,
@@ -233,5 +281,6 @@ export function validateSnapshot(value: unknown): GameSnapshot {
     countries: withCureRanks(countries),
     zombieHordeEvents,
     countryInfectionEvents,
+    gameMilestones,
   };
 }

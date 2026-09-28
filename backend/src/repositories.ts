@@ -36,6 +36,7 @@ export function copySnapshot(snapshot: GameSnapshot): GameSnapshot {
     }))),
     zombieHordeEvents: snapshot.zombieHordeEvents.map((event) => ({ ...event })),
     countryInfectionEvents: snapshot.countryInfectionEvents.map((event) => ({ ...event })),
+    gameMilestones: snapshot.gameMilestones.map((milestone) => ({ ...milestone })),
   };
 }
 
