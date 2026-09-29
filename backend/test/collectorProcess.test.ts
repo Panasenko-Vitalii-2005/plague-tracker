@@ -25,6 +25,7 @@ function snapshot(turn = 10, id = 'soudi_arabia'): GameSnapshot {
     zombieHordeEvents: [],
     countryInfectionEvents: [],
     gameMilestones: [],
+    publicOrderEvents: [],
     countries: [{
       index: 0,
       id,

@@ -37,6 +37,7 @@ function snapshot(day: number, firstFunding: number, secondFunding: number): Gam
     zombieHordeEvents: [],
     countryInfectionEvents: [],
     gameMilestones: [],
+    publicOrderEvents: [],
     countries: [country(0, 'morroco', firstFunding, day),
       country(1, 'soudi_arabia', secondFunding, day), country(2, 'peru', 0, day)] };
 }
@@ -152,7 +153,7 @@ test('v1 SQLite rows migrate and read with empty actions and null cure data', (t
   const db = openDatabase(databasePath);
   t.after(() => { db.close(); rmSync(path.dirname(databasePath), { recursive: true, force: true }); });
   assert.deepEqual(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all(),
-    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }]);
+    [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }]);
   const oldSnapshot = new SqliteSnapshotRepository(db).getByDay('old', 10);
   const country = oldSnapshot?.countries[0];
   assert.deepEqual(oldSnapshot?.zombieHordeEvents, []);

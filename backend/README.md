@@ -106,6 +106,23 @@ The backend does not scale or round it. Missing values in older collector
 payloads and older SQLite rows become `null`, as do explicitly unreadable
 values. Each historical day retains its own observed value; later changes do
 not modify earlier snapshots.
+The backend also derives `snapshot.publicOrderEvents` for LIVE, SSE, and
+full-day responses. These are **tracker-defined analytics**, not game-engine
+enums or events. Non-null raw fractions are classified without rounding:
+`stable` [0.80, 1], `strained` [0.60, 0.80), `unrest` [0.40, 0.60),
+`severe_unrest` [0.20, 0.40), and `critical` [0, 0.20). A null value has
+no status. An entry has `{ countryId, turn, fromStatus, toStatus, publicOrder,
+direction }`, where `turn` is the authoritative `snapshot.day`, `publicOrder`
+is the exact observed raw fraction, and `direction` is `deteriorated` or
+`improved`. The first non-null observation is a baseline, not an event;
+same-band changes create none. A jump across bands creates one observed
+transition, never synthetic intermediate events. Null observations, missing
+game days, and the first observation after backend restart re-establish a
+baseline rather than inferring transitions across unknown state. The list is
+cumulative within a session and saved with each observed day. Earlier days
+are not enriched when later transitions arrive. Missing legacy lists read as
+`[]`; malformed lists are rejected during validation/read-back. Raw country
+IDs and raw `publicOrder` values remain unchanged.
 Each live, SSE and full-day country also contains `borderStatus`,
 `airportStatus`, and `portStatus`: each is exactly `"open"`, `"closed"`, or
 `null`. They are current country-level infrastructure flags, not Government
@@ -118,6 +135,13 @@ SQLite rows read as `null`; each historical day keeps its own stored values.
 Each live and full-day country contains `governmentActions: [{ id, turn,
 removed }]` and `cureResearch: { funding, allocation, rank, flasks: { active,
 inactive, destroyed } } | null`. Action IDs are raw and never whitelisted.
+The enclosing snapshot supplies the raw country ID, authoritative `day`, and
+collector-provided `gameDate` for that observed day. Individual Government
+Action entries have no stored calendar date; their `turn` is not converted to
+one by this backend. The collector obtains `gameDate` from the game's
+`World.startDate.AddDays(Disease.turnNumber)` HUD path. The backend persists
+that date per observed daily snapshot, but has no proven helper for mapping an
+arbitrary older action `turn` to an exact calendar date.
 Schema migration 2 stores action events in list order and nullable cure values
 on each saved country/day. Older rows return `governmentActions: []` and
 `cureResearch: null`. Rank is derived for that day's positive funding values;
@@ -318,6 +342,10 @@ constraint; pre-migration rows read as null. Migration 5 adds nullable
 infrastructure-status columns. Migration 6 adds
 `daily_snapshots.country_infection_events_json` with an empty-array default
 for old rows. The ordered list is replaced atomically with the daily snapshot.
+Migration 7 adds the cumulative `game_milestones_json` list. Migration 8 adds
+`daily_snapshots.public_order_events_json` with an `[]` default for old rows;
+each day's cumulative transition list is replaced in the same transaction as
+that day's country state.
 File-backed databases use WAL. Each daily upsert is one transaction:
 update the global row, delete its old country rows, insert the complete current
 set. The `(session_id, day)` primary key prevents duplicate days, and

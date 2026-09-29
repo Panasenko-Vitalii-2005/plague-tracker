@@ -1,6 +1,5 @@
 import { GameSessionTracker } from './GameSessionTracker.js';
 import type { CollectorExit, GameSnapshot } from './types.js';
-import { copySnapshot } from './repositories.js';
 
 export interface LiveSnapshotEvent {
   sessionId: string;
@@ -42,7 +41,8 @@ export class TrackedCollector implements LiveEventSource {
     this.unsubscribeSnapshot = collector.onSnapshot((snapshot) => {
       this.observe(this.tracker.handleSnapshot(snapshot).then(() => {
         const sessionId = this.tracker.getActiveSession()?.id;
-        if (sessionId) this.emitLiveSnapshot({ sessionId, snapshot: copySnapshot(snapshot) });
+        const observed = this.tracker.getCurrentDaySnapshot();
+        if (sessionId && observed) this.emitLiveSnapshot({ sessionId, snapshot: observed });
       }));
     });
     this.unsubscribeExit = collector.onExit(() => {

@@ -6,6 +6,7 @@ import type {
 } from './types.js';
 import type { SessionRepository, SnapshotRepository } from './repositories.js';
 import { withCureRanks } from './cureRanks.js';
+import { parsePublicOrderEvents } from './validateSnapshot.js';
 
 interface SessionRow {
   id: string;
@@ -26,6 +27,7 @@ interface DailyRow {
   zombie_horde_events_json: string;
   country_infection_events_json: string;
   game_milestones_json: string;
+  public_order_events_json: string;
 }
 
 interface CountryRow {
@@ -165,8 +167,8 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
       INSERT INTO daily_snapshots
         (session_id, day, captured_at, game_date, disease_turn, event_turn,
          cure_progress, zombie_horde_events_json, country_infection_events_json,
-         game_milestones_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         game_milestones_json, public_order_events_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(session_id, day) DO UPDATE SET
         captured_at = excluded.captured_at,
         game_date = excluded.game_date,
@@ -175,7 +177,8 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
         cure_progress = excluded.cure_progress,
         zombie_horde_events_json = excluded.zombie_horde_events_json,
         country_infection_events_json = excluded.country_infection_events_json,
-        game_milestones_json = excluded.game_milestones_json
+        game_milestones_json = excluded.game_milestones_json,
+        public_order_events_json = excluded.public_order_events_json
     `);
     const clearCountries = this.db.prepare(
       'DELETE FROM country_snapshots WHERE session_id = ? AND day = ?',
@@ -201,6 +204,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
         JSON.stringify(snapshot.zombieHordeEvents ?? []),
         JSON.stringify(snapshot.countryInfectionEvents ?? []),
         JSON.stringify(snapshot.gameMilestones ?? []),
+        JSON.stringify(snapshot.publicOrderEvents ?? []),
       );
       clearCountries.run(snapshot.sessionId, snapshot.day);
       for (const country of snapshot.countries) {
@@ -361,6 +365,7 @@ export class SqliteSnapshotRepository implements SnapshotRepository {
       zombieHordeEvents: JSON.parse(row.zombie_horde_events_json) as HistoricalSnapshot['zombieHordeEvents'],
       countryInfectionEvents: JSON.parse(row.country_infection_events_json) as HistoricalSnapshot['countryInfectionEvents'],
       gameMilestones: JSON.parse(row.game_milestones_json) as HistoricalSnapshot['gameMilestones'],
+      publicOrderEvents: parsePublicOrderEvents(JSON.parse(row.public_order_events_json)),
       countries: withCureRanks(countries),
     };
   }

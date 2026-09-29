@@ -35,6 +35,7 @@ function snapshot(day: number, gameMilestones: GameMilestone[] = []): GameSnapsh
     zombieHordeEvents: [],
     countryInfectionEvents: [],
     gameMilestones,
+    publicOrderEvents: [],
     countries: [{ index: 0, id: 'soudi_arabia', currentPopulation: 100,
       originalPopulation: 100, healthyPopulation: 90, deadPopulation: 0,
       infected: 10, zombies: 0, publicOrder: null,
@@ -144,7 +145,7 @@ test('Migration 7 upgrades a version-6 historical row to an empty milestone list
   const db = openDatabase(databasePath);
   t.after(() => { db.close(); rmSync(directory, { recursive: true, force: true }); });
   assert.equal(db.prepare<[], { version: number }>(
-    'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1').get()!.version, 7);
+    'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1').get()!.version, 8);
   assert.deepEqual(new SqliteSnapshotRepository(db).getByDay('legacy', 150)?.gameMilestones, []);
 });
 

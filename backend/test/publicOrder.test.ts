@@ -21,6 +21,7 @@ function rawSnapshot(day: number, orders: unknown[]) {
     zombieHordeEvents: [],
     countryInfectionEvents: [],
     gameMilestones: [],
+    publicOrderEvents: [],
     countries: orders.map((publicOrder, index) => ({
       index, id: ['soudi_arabia', 'russia'][index] ?? `country_${index}`,
       currentPopulation: 100, originalPopulation: 100,

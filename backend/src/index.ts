@@ -2,6 +2,7 @@ export { loadCollectorConfig } from './config.js';
 export type { CollectorConfig } from './config.js';
 export { PlagueCollectorProcess } from './PlagueCollectorProcess.js';
 export { GameSessionTracker } from './GameSessionTracker.js';
+export { publicOrderStatus } from './publicOrderTimeline.js';
 export type { GameSessionTrackerOptions } from './GameSessionTracker.js';
 export { TrackedCollector } from './TrackedCollector.js';
 export type { SnapshotCollector, LiveEventSource, LiveSnapshotEvent, LiveStatusEvent } from './TrackedCollector.js';
@@ -23,6 +24,8 @@ export type {
   ZombieHordeEvent,
   GameMilestone,
   GameMilestoneType,
+  PublicOrderStatus,
+  PublicOrderEvent,
   GameSnapshot,
   GameSession,
   HistoricalSnapshot,

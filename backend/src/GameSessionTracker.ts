@@ -6,7 +6,8 @@ import {
   type SessionRepository,
   type SnapshotRepository,
 } from './repositories.js';
-import type { GameSession, GameSnapshot, HistoricalSnapshot } from './types.js';
+import type { GameSession, GameSnapshot, HistoricalSnapshot, PublicOrderEvent } from './types.js';
+import { observedPublicOrderEvents } from './publicOrderTimeline.js';
 
 export interface GameSessionTrackerOptions {
   sessions?: SessionRepository;
@@ -25,6 +26,8 @@ export class GameSessionTracker {
   private lastCapturedAt: string | null = null;
   private currentDayDirty = false;
   private initialized = false;
+  private baselineAfterRestore = false;
+  private lastKnownPublicOrderEvents: PublicOrderEvent[] = [];
   private queue: Promise<void> = Promise.resolve();
 
   constructor(options: GameSessionTrackerOptions = {}) {
@@ -97,6 +100,8 @@ export class GameSessionTracker {
       this.currentDaySnapshot = latest?.day === session.lastDay ? copySnapshot(latest) : null;
       this.lastCapturedAt = latest?.capturedAt ?? session.startedAt;
       this.currentDayDirty = false;
+      this.baselineAfterRestore = latest !== null;
+      this.lastKnownPublicOrderEvents = latest?.publicOrderEvents.map((event) => ({ ...event })) ?? [];
       this.log(`[session] resumed ${session.id} day=${session.lastDay}`);
     }
     this.initialized = true;
@@ -104,22 +109,31 @@ export class GameSessionTracker {
 
   private async accept(incoming: GameSnapshot): Promise<void> {
     if (!this.activeSession) {
-      await this.startSession(incoming);
+      await this.startSession({ ...incoming, publicOrderEvents: [] });
       return;
     }
 
     const previousDay = this.activeSession.lastDay;
-    if (incoming.day === previousDay) {
-      this.currentDaySnapshot = incoming;
-      this.lastCapturedAt = incoming.capturedAt;
-      this.currentDayDirty = true;
-      return;
-    }
-
     if (incoming.day < previousDay) {
       await this.finalizeCurrentDay();
       await this.endSession();
-      await this.startSession(incoming);
+      await this.startSession({ ...incoming, publicOrderEvents: [] });
+      return;
+    }
+
+    const observed: GameSnapshot = {
+      ...incoming,
+      publicOrderEvents: this.currentDaySnapshot
+        ? observedPublicOrderEvents(this.currentDaySnapshot, incoming,
+          !this.baselineAfterRestore && incoming.day <= previousDay + 1)
+        : this.lastKnownPublicOrderEvents.map((event) => ({ ...event })),
+    };
+    if (incoming.day === previousDay) {
+      this.currentDaySnapshot = observed;
+      this.lastCapturedAt = incoming.capturedAt;
+      this.currentDayDirty = true;
+      this.baselineAfterRestore = false;
+      this.lastKnownPublicOrderEvents = observed.publicOrderEvents.map((event) => ({ ...event }));
       return;
     }
 
@@ -130,9 +144,11 @@ export class GameSessionTracker {
     const advanced = { ...this.activeSession, lastDay: incoming.day };
     await this.sessions.save(advanced);
     this.activeSession = advanced;
-    this.currentDaySnapshot = incoming;
+    this.currentDaySnapshot = observed;
     this.lastCapturedAt = incoming.capturedAt;
     this.currentDayDirty = true;
+    this.baselineAfterRestore = false;
+    this.lastKnownPublicOrderEvents = observed.publicOrderEvents.map((event) => ({ ...event }));
   }
 
   private async startSession(snapshot: GameSnapshot): Promise<void> {
@@ -148,6 +164,8 @@ export class GameSessionTracker {
     this.currentDaySnapshot = snapshot;
     this.lastCapturedAt = snapshot.capturedAt;
     this.currentDayDirty = true;
+    this.baselineAfterRestore = false;
+    this.lastKnownPublicOrderEvents = snapshot.publicOrderEvents.map((event) => ({ ...event }));
     this.log(`[session] started ${session.id} day=${snapshot.day}`);
   }
 
@@ -174,5 +192,7 @@ export class GameSessionTracker {
     this.currentDaySnapshot = null;
     this.lastCapturedAt = null;
     this.currentDayDirty = false;
+    this.baselineAfterRestore = false;
+    this.lastKnownPublicOrderEvents = [];
   }
 }

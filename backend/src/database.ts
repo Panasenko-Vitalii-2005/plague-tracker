@@ -115,6 +115,13 @@ const migrations = [
         ADD COLUMN game_milestones_json TEXT NOT NULL DEFAULT '[]';
     `,
   },
+  {
+    version: 8,
+    sql: `
+      ALTER TABLE daily_snapshots
+        ADD COLUMN public_order_events_json TEXT NOT NULL DEFAULT '[]';
+    `,
+  },
 ] as const;
 
 export function openDatabase(databasePath = loadDatabasePath()): Database.Database {

@@ -15,7 +15,7 @@ export interface CountrySnapshot {
   cureResearch: CountryCureResearch | null;
 }
 
-export type InfrastructureStatus = 'open' | 'closed' | null;
+export type InfrastructureStatus = "open" | "closed" | null;
 
 export interface GovernmentActionEvent {
   id: string;
@@ -50,21 +50,37 @@ export interface CountryInfectionEvent {
 }
 
 export type GameMilestoneType =
-  | 'virus_dna_detected'
-  | 'more_infectious_than_tb'
-  | 'more_infectious_than_hiv'
-  | 'disease_detected'
-  | 'first_death'
-  | 'more_infectious_than_common_cold'
-  | 'worse_than_black_death'
-  | 'worse_than_spanish_flu'
-  | 'worse_than_smallpox';
+  | "virus_dna_detected"
+  | "more_infectious_than_tb"
+  | "more_infectious_than_hiv"
+  | "disease_detected"
+  | "first_death"
+  | "more_infectious_than_common_cold"
+  | "worse_than_black_death"
+  | "worse_than_spanish_flu"
+  | "worse_than_smallpox";
 
 export interface GameMilestone {
   type: GameMilestoneType;
   turn: number;
   countryId: string | null;
   diseaseId: number;
+}
+
+export type PublicOrderStatus =
+  | "normal"
+  | "general_disorder"
+  | "mass_disorder"
+  | "near_anarchy"
+  | "anarchy";
+
+export interface PublicOrderEvent {
+  countryId: string;
+  turn: number;
+  fromStatus: PublicOrderStatus;
+  toStatus: PublicOrderStatus;
+  publicOrder: number;
+  direction: "deteriorated" | "improved";
 }
 
 export interface GameSnapshot {
@@ -78,6 +94,7 @@ export interface GameSnapshot {
   zombieHordeEvents: ZombieHordeEvent[];
   countryInfectionEvents: CountryInfectionEvent[];
   gameMilestones: GameMilestone[];
+  publicOrderEvents: PublicOrderEvent[];
 }
 
 export interface GameSession {
@@ -130,7 +147,7 @@ export interface CountryHistoryPoint {
   zombies: number;
 }
 
-export type CollectorState = 'stopped' | 'starting' | 'running' | 'failed';
+export type CollectorState = "stopped" | "starting" | "running" | "failed";
 
 export interface CollectorExit {
   code: number | null;
