@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { apiUrl, normalizeApiBaseUrl } from '../src/api/config.ts'
 import { ApiError, getCountryHistory, getHistoricalSnapshot, getSessionCountries, getSessions } from '../src/api/client.ts'
 import { parseHistoricalSnapshot, parseLiveState, parseSessionCountries, parseSessionHistory, parseSessions } from '../src/api/parse.ts'
+import type { GameMilestone } from '../src/api/types.ts'
 
 const country = {
   index: 2, id: 'soudi_arabia', currentPopulation: 90, originalPopulation: 100,
@@ -15,6 +16,52 @@ const snapshot = {
   capturedAt: '2026-09-23T00:00:00Z', day: 10, gameDate: '2026-10-03',
   diseaseTurn: 12, eventTurn: 14, cureProgress: 25.51, countries: [country],
 }
+
+const milestones: GameMilestone[] = [
+  { type: 'virus_dna_detected', turn: 11, countryId: null, diseaseId: 0 },
+  { type: 'more_infectious_than_tb', turn: 117, countryId: null, diseaseId: 0 },
+  { type: 'more_infectious_than_hiv', turn: 138, countryId: null, diseaseId: 0 },
+  { type: 'disease_detected', turn: 140, countryId: 'soudi_arabia', diseaseId: 0 },
+  { type: 'more_infectious_than_common_cold', turn: 188, countryId: null, diseaseId: 0 },
+  { type: 'first_death', turn: 233, countryId: 'afghanistan', diseaseId: 0 },
+  { type: 'worse_than_black_death', turn: 253, countryId: null, diseaseId: 0 },
+  { type: 'worse_than_spanish_flu', turn: 295, countryId: null, diseaseId: 0 },
+  { type: 'worse_than_smallpox', turn: 316, countryId: null, diseaseId: 0 },
+]
+
+test('game milestone parser accepts all nine types, preserves order and duplicates, and defaults missing to empty', () => {
+  const events = [milestones[0]!, ...milestones, { ...milestones[3]!, diseaseId: -7 }]
+  const live = parseLiveState({ collector: { running: true, lastError: null }, session: null,
+    snapshot: { ...snapshot, gameMilestones: events } })
+  const history = parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot, gameMilestones: events })
+  assert.deepEqual(live.snapshot?.gameMilestones, events)
+  assert.deepEqual(history.gameMilestones, events)
+  assert.equal(history.gameMilestones[4]?.countryId, 'soudi_arabia')
+  assert.deepEqual(parseHistoricalSnapshot({ sessionId: 'legacy', ...snapshot }).gameMilestones, [])
+})
+
+test('game milestone parser rejects malformed lists, types, numbers and country contexts', () => {
+  for (const invalidList of [null, {}, 'news', 1]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      gameMilestones: invalidList }), /gameMilestones/)
+  }
+  const global = milestones[0]!
+  const countrySpecific = milestones[3]!
+  for (const invalid of [
+    null, [], 'event',
+    { ...global, type: 'unknown' }, { ...global, type: 'Virus_DNA_Detected' },
+    { ...global, turn: 1.5 }, { ...global, turn: Number.MAX_SAFE_INTEGER + 1 },
+    { ...global, turn: Number.NaN }, { ...global, turn: '11' },
+    { ...global, diseaseId: 1.5 }, { ...global, diseaseId: Number.POSITIVE_INFINITY },
+    { ...global, countryId: 'russia' }, { ...global, countryId: undefined },
+    { ...countrySpecific, countryId: null }, { ...countrySpecific, countryId: '' },
+    { ...countrySpecific, countryId: ' ' }, { ...countrySpecific, countryId: 1 },
+    { ...milestones[5]!, countryId: null },
+  ]) {
+    assert.throws(() => parseHistoricalSnapshot({ sessionId: 'session-a', ...snapshot,
+      gameMilestones: [invalid] }), /game milestone/)
+  }
+})
 
 test('API URL defaults to same-origin /api/v1 and accepts an override', () => {
   assert.equal(normalizeApiBaseUrl(), '/api/v1')

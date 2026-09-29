@@ -1,13 +1,26 @@
 import type {
   CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot,
   InfrastructureStatus,
-  GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
+  GameMilestone, GameMilestoneType, GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
   ZombieHordeEvent,
 } from './types.ts'
 
 type RecordValue = Record<string, unknown>
+
+const gameMilestoneTypes = new Set<GameMilestoneType>([
+  'virus_dna_detected', 'more_infectious_than_tb', 'more_infectious_than_hiv',
+  'disease_detected', 'first_death', 'more_infectious_than_common_cold',
+  'worse_than_black_death', 'worse_than_spanish_flu', 'worse_than_smallpox',
+])
+
+function gameMilestoneType(value: unknown): GameMilestoneType {
+  if (typeof value !== 'string' || !gameMilestoneTypes.has(value as GameMilestoneType)) {
+    throw new Error('Invalid game milestone.type: unsupported type')
+  }
+  return value as GameMilestoneType
+}
 
 function record(value: unknown, label: string): RecordValue {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -153,6 +166,27 @@ function parseCountryInfectionEvent(value: unknown): CountryInfectionEvent {
   }
 }
 
+function parseGameMilestone(value: unknown): GameMilestone {
+  const data = record(value, 'game milestone')
+  const type = gameMilestoneType(data.type)
+  const needsCountry = type === 'disease_detected' || type === 'first_death'
+  let countryId: string | null = null
+  if (needsCountry) {
+    countryId = string(data.countryId, 'game milestone.countryId')
+    if (!countryId.trim() || countryId.length > 4096) {
+      throw new Error('Invalid game milestone.countryId: expected non-empty string')
+    }
+  } else if (data.countryId !== null) {
+    throw new Error('Invalid game milestone.countryId: expected null for global milestone')
+  }
+  return {
+    type,
+    turn: integer(data.turn, 'game milestone.turn'),
+    countryId,
+    diseaseId: integer(data.diseaseId, 'game milestone.diseaseId'),
+  }
+}
+
 export function parseLiveSnapshot(value: unknown): LiveSnapshot {
   const data = record(value, 'live snapshot')
   return {
@@ -167,6 +201,8 @@ export function parseLiveSnapshot(value: unknown): LiveSnapshot {
       : array(data.zombieHordeEvents, 'zombieHordeEvents')).map(parseZombieHordeEvent),
     countryInfectionEvents: (data.countryInfectionEvents === undefined ? []
       : array(data.countryInfectionEvents, 'countryInfectionEvents')).map(parseCountryInfectionEvent),
+    gameMilestones: (data.gameMilestones === undefined ? []
+      : array(data.gameMilestones, 'gameMilestones')).map(parseGameMilestone),
   }
 }
 

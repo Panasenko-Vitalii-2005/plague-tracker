@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { LiveGameView } from '../src/api/liveStore.ts'
-import type { CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
+import type { CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot, GameMilestone, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
   SessionHistoryResponse, SessionSummary, ZombieHordeEvent } from '../src/api/types.ts'
 import { countryStatusComposition } from '../src/domain/countryDonut.ts'
 import type { Resource } from '../src/hooks/useHistory.ts'
@@ -18,6 +18,7 @@ let HistoryDashboard: typeof import('../src/components/HistoryPanel.tsx').Histor
 let CountryGrid: typeof import('../src/components/CountryGrid.tsx').CountryGrid
 let ZombieHordeMovements: typeof import('../src/components/ZombieHordeMovements.tsx').ZombieHordeMovements
 let CountryInfectionHistory: typeof import('../src/components/CountryInfectionHistory.tsx').CountryInfectionHistory
+let GameMilestones: typeof import('../src/components/GameMilestones.tsx').GameMilestones
 
 before(async () => {
   server = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: 'custom' })
@@ -28,6 +29,7 @@ before(async () => {
   CountryGrid = (await server.ssrLoadModule('/src/components/CountryGrid.tsx')).CountryGrid
   ZombieHordeMovements = (await server.ssrLoadModule('/src/components/ZombieHordeMovements.tsx')).ZombieHordeMovements
   CountryInfectionHistory = (await server.ssrLoadModule('/src/components/CountryInfectionHistory.tsx')).CountryInfectionHistory
+  GameMilestones = (await server.ssrLoadModule('/src/components/GameMilestones.tsx')).GameMilestones
 })
 after(async () => { await server?.close() })
 
@@ -58,6 +60,41 @@ const infectionEvents: CountryInfectionEvent[] = [
   { countryId: 'east_africa', turn: 74, eventTurn: 105, diseaseId: 0 },
   { countryId: 'greenland', turn: 270, eventTurn: 385, diseaseId: 0 },
 ]
+
+const milestones: GameMilestone[] = [
+  { type: 'virus_dna_detected', turn: 11, countryId: null, diseaseId: 0 },
+  { type: 'more_infectious_than_tb', turn: 117, countryId: null, diseaseId: 0 },
+  { type: 'more_infectious_than_hiv', turn: 138, countryId: null, diseaseId: 0 },
+  { type: 'disease_detected', turn: 140, countryId: 'soudi_arabia', diseaseId: 0 },
+  { type: 'more_infectious_than_common_cold', turn: 188, countryId: null, diseaseId: 0 },
+  { type: 'first_death', turn: 233, countryId: 'afghanistan', diseaseId: 0 },
+  { type: 'worse_than_black_death', turn: 253, countryId: null, diseaseId: 0 },
+  { type: 'worse_than_spanish_flu', turn: 295, countryId: null, diseaseId: 0 },
+  { type: 'worse_than_smallpox', turn: 316, countryId: null, diseaseId: 0 },
+]
+
+test('Game Milestones renders readable labels, days, friendly names and duplicate entries', () => {
+  const empty = renderToStaticMarkup(createElement(GameMilestones, { events: [] }))
+  assert.match(empty, /Game Milestones/)
+  assert.match(empty, /No game milestones available for this snapshot/)
+  assert.doesNotMatch(empty, /class="milestone-item"/)
+
+  const html = renderToStaticMarkup(createElement(GameMilestones, {
+    events: [...milestones, { ...milestones[3]! }],
+  }))
+  assert.equal((html.match(/class="milestone-item"/g) ?? []).length, 10)
+  for (const label of [
+    'Virus DNA detected', 'More infectious than TB', 'More infectious than HIV',
+    'Disease detected in Soudi Arabia', 'More infectious than the Common Cold',
+    'First death in Afghanistan', 'Worse than the Black Death',
+    'Worse than Spanish Flu', 'Worse than Smallpox',
+  ]) assert.match(html, new RegExp(label))
+  assert.ok(html.indexOf('Virus DNA detected') < html.indexOf('More infectious than TB'))
+  assert.equal((html.match(/Disease detected in Soudi Arabia/g) ?? []).length, 2)
+  assert.match(html, /Day 11/)
+  assert.match(html, /Day 253/)
+  assert.doesNotMatch(html, /soudi_arabia|afghanistan|diseaseId|eventTurn|virus_dna_detected/)
+})
 
 test('infection history renders friendly names in replay order and preserves duplicates', () => {
   const empty = renderToStaticMarkup(createElement(CountryInfectionHistory, { events: [] }))
@@ -284,7 +321,7 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
     session: null, sessionId: '12345678-aaaa', error: null,
     snapshot: { capturedAt: '2026-09-23T00:00:00Z', day: 184, gameDate: '2028-04-12', diseaseTurn: 200,
       eventTurn: 211, cureProgress: 34.2769, zombieHordeEvents: [horde],
-      countryInfectionEvents: infectionEvents, countries: [
+      countryInfectionEvents: infectionEvents, gameMilestones: [], countries: [
         { index: 0, id: 'south_africa', originalPopulation: 1000, currentPopulation: 990,
           healthyPopulation: 800, infected: 170, deadPopulation: 20, zombies: 0,
           publicOrder: 0.4627481,
@@ -322,7 +359,7 @@ test('infection history switches 333 empty → 334 recorded → 333 empty withou
     firstGameDate: '2027-08-01', lastGameDate: '2027-08-12' }
   const day333: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 333, gameDate: '2027-08-01', diseaseTurn: 333, eventTurn: 400, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], countries: [countryCardFixture('egypt', 0)] }
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], countries: [countryCardFixture('egypt', 0)] }
   const allEvents = [...infectionEvents, ...Array.from({ length: 54 }, (_, index) => ({
     countryId: `country_${index}`, turn: 271 + index, eventTurn: 386 + index, diseaseId: 0,
   }))]
@@ -356,6 +393,53 @@ test('infection history switches 333 empty → 334 recorded → 333 empty withou
   assert.doesNotMatch(oldAgain, /infection-history-item|Soudi Arabia|Greenland/)
 })
 
+test('Game Milestones HISTORY follows stored 0 → 5 → 6 → 7 progression without LIVE leakage', () => {
+  const summary: SessionSummary = { id: 'milestone-session', startedAt: '2026-09-23T00:00:00Z', endedAt: null,
+    firstDay: 10, lastDay: 255, snapshotCount: 4, isOpen: true,
+    firstGameDate: '2027-01-01', lastGameDate: '2027-09-12' }
+  const base: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
+    day: 10, gameDate: '2027-01-01', diseaseTurn: 10, eventTurn: 10, cureProgress: 0,
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [],
+    countries: [countryCardFixture('soudi_arabia', 0)] }
+  const day224: HistoricalSnapshot = { ...base, day: 224, gameDate: '2027-08-12',
+    gameMilestones: milestones.slice(0, 5) }
+  const day234: HistoricalSnapshot = { ...base, day: 234, gameDate: '2027-08-22',
+    gameMilestones: milestones.slice(0, 6) }
+  const day254: HistoricalSnapshot = { ...base, day: 254, gameDate: '2027-09-11',
+    gameMilestones: milestones.slice(0, 7) }
+  const common = { sessions: loaded([summary]), session: idle<SessionDetails>(),
+    global: idle<SessionHistoryResponse>(),
+    countries: loaded<SessionCountriesResponse>({ sessionId: summary.id,
+      countries: [{ id: 'soudi_arabia', index: 0 }] }),
+    country: idle<CountryHistoryResponse>(), sessionId: summary.id, onSessionChange: () => {},
+    preferredCountryId: 'soudi_arabia', onCountryChange: () => {} }
+  const renderDay = (snapshot: HistoricalSnapshot) => renderToStaticMarkup(createElement(HistoryDashboard, {
+    ...common, replay: { ...replay(snapshot, snapshot.day), days: [10, 224, 234, 254],
+      index: [10, 224, 234, 254].indexOf(snapshot.day) },
+  }))
+  const section = (html: string) => html.match(/<section class="surface milestone-panel"[\s\S]*?<\/section>/)?.[0] ?? ''
+  const live: LiveGameView = { connectionState: 'live', collectorStatus: { running: true, lastError: null },
+    session: null, sessionId: summary.id, error: null,
+    snapshot: { ...day254, day: 255, gameMilestones: milestones.slice(0, 7) } }
+
+  const empty = section(renderDay(base))
+  const five = section(renderDay(day224))
+  const six = section(renderDay(day234))
+  const seven = section(renderDay(day254))
+  const liveNow = section(renderToStaticMarkup(createElement(LivePanel, { live })))
+  const earlierAgain = section(renderDay(day224))
+  assert.match(empty, /No game milestones available for this snapshot/)
+  assert.doesNotMatch(empty, /milestone-item|Virus DNA detected/)
+  assert.deepEqual([five, six, seven, liveNow, earlierAgain]
+    .map((html) => (html.match(/class="milestone-item"/g) ?? []).length), [5, 6, 7, 7, 5])
+  assert.match(five, /Disease detected in Soudi Arabia/)
+  assert.doesNotMatch(five, /First death in Afghanistan|Worse than the Black Death/)
+  assert.match(six, /First death in Afghanistan/)
+  assert.doesNotMatch(six, /Worse than the Black Death/)
+  assert.match(seven, /Worse than the Black Death/)
+  assert.doesNotMatch(earlierAgain, /First death in Afghanistan|Worse than the Black Death/)
+})
+
 test('history dashboard renders saved session, global values and historical country data', () => {
   const summary: SessionSummary = { id: 'abcdef12-3456', startedAt: '2026-09-23T00:00:00Z', endedAt: null,
     firstDay: 10, lastDay: 13, snapshotCount: 2, isOpen: true, firstGameDate: '2026-01-10',
@@ -380,6 +464,7 @@ test('history dashboard renders saved session, global values and historical coun
     day: 13, gameDate: '2026-01-13', diseaseTurn: 12, eventTurn: 13, cureProgress: 12.3456,
     zombieHordeEvents: [{ ...horde, arrivalTurn: 13, arrivalEventTurn: 21 }],
     countryInfectionEvents: [],
+    gameMilestones: [],
     countries: [{ index: 1, id: 'south_africa', originalPopulation: 100, currentPopulation: 90,
       healthyPopulation: 60, infected: 30, deadPopulation: 10, zombies: 0,
       publicOrder: null,
@@ -461,7 +546,7 @@ test('Egypt public order stays tied to the selected historical day, not the late
     firstGameDate: '2027-06-14', lastGameDate: '2027-07-20' }
   const historical: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 229, gameDate: '2027-06-14', diseaseTurn: 229, eventTurn: 229, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [],
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [],
     countries: [countryCardFixture('egypt', 0, { publicOrder: 0.9497843 })] }
   const later: HistoricalSnapshot = { ...historical, day: 265, gameDate: '2027-07-20',
     countries: [countryCardFixture('egypt', 0, { publicOrder: 0.50941885 })] }
@@ -496,7 +581,7 @@ test('selected-country overview and cards use infrastructure from the selected h
     firstGameDate: '2027-01-01', lastGameDate: '2027-02-14' }
   const historical: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 267, gameDate: '2027-01-01', diseaseTurn: 267, eventTurn: 267, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], countries: [countryCardFixture('egypt', 0,
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], countries: [countryCardFixture('egypt', 0,
       { borderStatus: 'open', airportStatus: 'open', portStatus: 'open' })] }
   const later: HistoricalSnapshot = { ...historical, day: 311, gameDate: '2027-02-14',
     countries: [countryCardFixture('egypt', 0,

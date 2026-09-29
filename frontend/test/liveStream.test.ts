@@ -32,10 +32,14 @@ test('SSE parses state, snapshot and status and removes every listener on cleanu
   const source = new FakeEventSource()
   const events: string[] = []
   const infectionLists: unknown[] = []
+  const milestoneLists: unknown[] = []
   const end = connectLiveStream({
     onEvent: (event) => {
       events.push(event.type)
-      if (event.type === 'snapshot') infectionLists.push(event.data.snapshot.countryInfectionEvents)
+      if (event.type === 'snapshot') {
+        infectionLists.push(event.data.snapshot.countryInfectionEvents)
+        milestoneLists.push(event.data.snapshot.gameMilestones)
+      }
     },
     onOpen: () => events.push('open'),
     onReconnect: () => events.push('reconnect'),
@@ -45,11 +49,14 @@ test('SSE parses state, snapshot and status and removes every listener on cleanu
   source.emit('open')
   source.emit('state', { collector: { running: false, lastError: null }, session: null, snapshot: null })
   const infection = { countryId: 'greenland', turn: 270, eventTurn: 385, diseaseId: 0 }
-  source.emit('snapshot', { sessionId: 'a', snapshot: { ...snapshot, countryInfectionEvents: [infection] } })
+  const milestone = { type: 'virus_dna_detected', turn: 11, countryId: null, diseaseId: 0 }
+  source.emit('snapshot', { sessionId: 'a', snapshot: { ...snapshot,
+    countryInfectionEvents: [infection], gameMilestones: [milestone] } })
   source.emit('status', { running: false, lastError: null })
   source.emit('error')
   assert.deepEqual(events, ['open', 'state', 'snapshot', 'status', 'reconnect'])
   assert.deepEqual(infectionLists, [[infection]])
+  assert.deepEqual(milestoneLists, [[milestone]])
   end()
   assert.equal(source.closed, true)
   assert.equal(source.listenerCount(), 0)
