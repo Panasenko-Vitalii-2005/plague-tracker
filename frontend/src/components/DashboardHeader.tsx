@@ -1,7 +1,7 @@
 import type { LiveConnectionState } from '../api/liveStore.ts'
 import { liveStatus } from '../domain/dashboard.ts'
 
-export type DashboardMode = 'live' | 'history'
+export type DashboardMode = 'live' | 'history' | 'copy'
 
 export function DashboardHeader({ mode, onModeChange, connectionState }: {
   mode: DashboardMode
@@ -19,6 +19,8 @@ export function DashboardHeader({ mode, onModeChange, connectionState }: {
         aria-current={mode === 'live' ? 'page' : undefined} onClick={() => onModeChange('live')}>LIVE</button>
       <button type="button" className={mode === 'history' ? 'is-active' : ''}
         aria-current={mode === 'history' ? 'page' : undefined} onClick={() => onModeChange('history')}>HISTORY</button>
+      <button type="button" className={mode === 'copy' ? 'is-active' : ''}
+        aria-current={mode === 'copy' ? 'page' : undefined} onClick={() => onModeChange('copy')}>COPY VIEW</button>
     </nav>
     <span className={`connection-status is-${status.tone}`} role="status" title={status.description}>
       <span className="status-dot" aria-hidden="true" />{status.label}

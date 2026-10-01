@@ -1,0 +1,19 @@
+.copy-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.copy-source { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface); }
+.copy-source button { padding: 9px 15px; border: 0; border-radius: 5px; background: transparent;
+  color: var(--muted-strong); font-size: 12px; font-weight: 700; }
+.copy-source button.is-active { background: #30404b; color: var(--text); }
+.copy-source button:hover { color: var(--text); }
+.copy-feedback { min-height: 1.4em; color: var(--cure); font-size: 12px; }
+.copy-empty { padding: 24px; color: var(--muted-strong); font-size: 14px; }
+.copy-section { min-width: 0; overflow: hidden; }
+.copy-section-heading { display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 17px 22px; border-bottom: 1px solid var(--border); }
+.copy-text { max-width: 100%; margin: 0; padding: 21px 22px; overflow-x: auto;
+  color: var(--text); font: 12px/1.55 Consolas, 'Cascadia Mono', monospace;
+  white-space: pre; user-select: text; }
+@media (max-width: 600px) {
+  .copy-section-heading { padding: 14px 16px; }
+  .copy-text { padding: 16px; }
+}

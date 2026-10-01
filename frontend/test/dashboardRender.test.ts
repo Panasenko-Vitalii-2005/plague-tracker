@@ -19,6 +19,8 @@ let CountryGrid: typeof import('../src/components/CountryGrid.tsx').CountryGrid
 let ZombieHordeMovements: typeof import('../src/components/ZombieHordeMovements.tsx').ZombieHordeMovements
 let CountryInfectionHistory: typeof import('../src/components/CountryInfectionHistory.tsx').CountryInfectionHistory
 let OutbreakTimeline: typeof import('../src/components/OutbreakTimeline.tsx').OutbreakTimeline
+let CopyViewContent: typeof import('../src/components/CopyView.tsx').CopyViewContent
+let DashboardHeader: typeof import('../src/components/DashboardHeader.tsx').DashboardHeader
 
 before(async () => {
   server = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: 'custom' })
@@ -30,6 +32,8 @@ before(async () => {
   ZombieHordeMovements = (await server.ssrLoadModule('/src/components/ZombieHordeMovements.tsx')).ZombieHordeMovements
   CountryInfectionHistory = (await server.ssrLoadModule('/src/components/CountryInfectionHistory.tsx')).CountryInfectionHistory
   OutbreakTimeline = (await server.ssrLoadModule('/src/components/OutbreakTimeline.tsx')).OutbreakTimeline
+  CopyViewContent = (await server.ssrLoadModule('/src/components/CopyView.tsx')).CopyViewContent
+  DashboardHeader = (await server.ssrLoadModule('/src/components/DashboardHeader.tsx')).DashboardHeader
 })
 after(async () => { await server?.close() })
 
@@ -48,6 +52,40 @@ const countryCardFixture = (id: string, index: number,
   deadPopulation: 5_000_000, publicOrder: null,
   borderStatus: null, airportStatus: null, portStatus: null,
   governmentActions: [], cureResearch: null, ...overrides,
+})
+
+test('Copy View is a top-level tab with selectable plain text and temporary feedback', () => {
+  const header = renderToStaticMarkup(createElement(DashboardHeader, {
+    mode: 'copy', onModeChange: () => {}, connectionState: 'live',
+  }))
+  assert.match(header, /LIVE/)
+  assert.match(header, /HISTORY/)
+  assert.match(header, /aria-current="page"[^>]*>COPY VIEW<\/button>/)
+
+  const snapshot: LiveSnapshot = { capturedAt: '2035-01-01T00:00:00Z',
+    day: 243, gameDate: '2027-05-30', diseaseTurn: 243, eventTurn: 250, cureProgress: 0,
+    countries: [countryCardFixture('peru', 0)], gameMilestones: [], publicOrderEvents: [],
+    countryInfectionEvents: [], zombieHordeEvents: [] }
+  const html = renderToStaticMarkup(createElement(CopyViewContent, {
+    snapshot, source: 'history', feedback: 'snapshot', onCopy: () => {}, onSourceChange: () => {},
+  }))
+  assert.match(html, /aria-pressed="true"[^>]*>HISTORY<\/button>/)
+  assert.match(html, /Copy everything/)
+  assert.match(html, /Copy snapshot/)
+  assert.match(html, /Copy news/)
+  assert.match(html, /<pre class="copy-text">PLAGUE INC SNAPSHOT\nDay 243 · 30 May 2027/)
+  assert.match(html, /<pre class="copy-text">OUTBREAK NEWS/)
+  assert.match(html, /role="status" aria-live="polite">Copied/)
+  const failed = renderToStaticMarkup(createElement(CopyViewContent, {
+    snapshot, source: 'live', feedback: 'error', onCopy: () => {}, onSourceChange: () => {},
+  }))
+  assert.match(failed, /Clipboard unavailable — select text and press Ctrl\+C/)
+  const empty = renderToStaticMarkup(createElement(CopyViewContent, {
+    snapshot: null, source: 'history', feedback: null, onCopy: () => {}, onSourceChange: () => {},
+  }))
+  assert.match(empty, /No game snapshot available\./)
+  assert.match(empty, /disabled=""[^>]*>Copy everything<\/button>/)
+  assert.doesNotMatch(empty, /<pre/)
 })
 
 const horde: ZombieHordeEvent = { turn: 10, eventTurn: 17, diseaseId: 0,

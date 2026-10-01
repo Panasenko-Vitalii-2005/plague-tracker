@@ -1,12 +1,12 @@
-import { lazy, memo, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import type { CountryHistoryResponse, SessionCountriesResponse, SessionDetails, SessionHistoryResponse, SessionSummary as SessionSummaryData } from '../api/types.ts'
 import { formatCountryName, resolveSessionCountry } from '../domain/countries.ts'
 import { globalPercentages } from '../domain/dashboard.ts'
 import { aggregateCountries } from '../domain/metrics.ts'
 import { formatPercent, formatPopulation } from '../domain/format.ts'
-import { useCountryHistory, useSession, useSessionCountries, useSessionHistory, useSessions,
-  type Resource } from '../hooks/useHistory.ts'
-import { useReplay, type HistoricalReplay } from '../hooks/useReplay.ts'
+import type { Resource } from '../hooks/useHistory.ts'
+import type { HistoryWorkspace } from '../hooks/useHistoryWorkspace.ts'
+import type { HistoricalReplay } from '../hooks/useReplay.ts'
 import { CountryOverview } from './CountryOverview.tsx'
 import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
@@ -22,22 +22,9 @@ const HistoryChart = lazy(() => import('./HistoryChart.tsx').then((module) => ({
 const CountryHistoryChart = lazy(() => import('./CountryHistoryChart.tsx')
   .then((module) => ({ default: module.CountryHistoryChart })))
 
-export const HistoryPanel = memo(function HistoryPanel() {
-  const sessions = useSessions()
-  const [sessionId, setSessionId] = useState('')
-  const [preferredCountryId, setPreferredCountryId] = useState<string | null>(null)
-  const session = useSession(sessionId || null)
-  const global = useSessionHistory(sessionId || null)
-  const replay = useReplay(sessionId, global)
-  const countries = useSessionCountries(sessionId || null)
-  const availableCountries = countries.status === 'success' ? countries.data.countries : []
-  const countryId = countries.status === 'success'
-    ? resolveSessionCountry(availableCountries, preferredCountryId) : null
-  const country = useCountryHistory(sessionId || null, countryId)
-  return <HistoryDashboard sessions={sessions} session={session} global={global} countries={countries}
-    country={country} replay={replay} sessionId={sessionId} onSessionChange={(id) => { replay.reset(); setSessionId(id) }}
-    preferredCountryId={preferredCountryId} onCountryChange={setPreferredCountryId} />
-})
+export function HistoryPanel({ workspace }: { workspace: HistoryWorkspace }) {
+  return <HistoryDashboard {...workspace} />
+}
 
 export function HistoryDashboard({ sessions, session, global, countries, country, replay, sessionId,
   onSessionChange, preferredCountryId, onCountryChange }: {
