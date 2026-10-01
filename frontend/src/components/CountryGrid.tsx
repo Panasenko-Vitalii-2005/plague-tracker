@@ -1,7 +1,9 @@
 import type { CountrySnapshot } from "../api/types.ts";
 import { formatCountryName } from "../domain/countries.ts";
 import { countryStatusComposition } from "../domain/countryDonut.ts";
-import { formatPopulation, formatPublicOrder } from "../domain/format.ts";
+import { formatPopulation } from "../domain/format.ts";
+import { formatPublicOrderWithStatus } from "../domain/publicOrder.ts";
+import type { GameDateAnchor } from "../domain/gameDate.ts";
 import {
   COUNTRY_REGIONS,
   countryBelongsToRegion,
@@ -85,7 +87,7 @@ function CountryDonut({ country }: { country: CountrySnapshot }) {
   );
 }
 
-function CountryCard({ country }: { country: CountrySnapshot }) {
+function CountryCard({ country, anchor }: { country: CountrySnapshot; anchor?: GameDateAnchor }) {
   const metrics = [
     ["Population", country.currentPopulation],
     ["Healthy", country.healthyPopulation],
@@ -116,7 +118,7 @@ function CountryCard({ country }: { country: CountrySnapshot }) {
           ))}
           <div className="country-card-metric country-card-metric-public-order">
             <dt>Public Order</dt>
-            <dd>{formatPublicOrder(country.publicOrder)}</dd>
+            <dd>{formatPublicOrderWithStatus(country.publicOrder)}</dd>
           </div>
         </dl>
 
@@ -125,15 +127,17 @@ function CountryCard({ country }: { country: CountrySnapshot }) {
 
       <CountryInfrastructure country={country} />
       <CountryResearch cureResearch={country.cureResearch} />
-      <CountryGovernmentActions actions={country.governmentActions} />
+      <CountryGovernmentActions actions={country.governmentActions} anchor={anchor} />
     </article>
   );
 }
 
 export function CountryGrid({
   countries,
+  anchor,
 }: {
   countries: readonly CountrySnapshot[];
+  anchor?: GameDateAnchor;
 }) {
   const ordered = [...countries].sort(
     (left, right) => left.index - right.index,
@@ -173,7 +177,7 @@ export function CountryGrid({
 
                 <div className="country-grid country-region-grid">
                   {regionCountries.map((country) => (
-                    <CountryCard key={country.id} country={country} />
+                    <CountryCard key={country.id} country={country} anchor={anchor} />
                   ))}
                 </div>
               </details>

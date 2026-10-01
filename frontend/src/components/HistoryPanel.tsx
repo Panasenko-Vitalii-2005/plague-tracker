@@ -11,7 +11,7 @@ import { CountryOverview } from './CountryOverview.tsx'
 import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
 import { CountryInfectionHistory } from './CountryInfectionHistory.tsx'
-import { GameMilestones } from './GameMilestones.tsx'
+import { OutbreakTimeline } from './OutbreakTimeline.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
@@ -148,11 +148,10 @@ export function HistoryDashboard({ sessions, session, global, countries, country
               tone="zombies" quiet={metrics.zombies === 0} />
           </div>
         </section>
-        <GameMilestones events={snapshot.gameMilestones} />
-        <CountryInfectionHistory events={snapshot.countryInfectionEvents} />
-        <ZombieHordeMovements events={snapshot.zombieHordeEvents}
-          datesByDay={new Map(history.map((point) => [point.day, point.gameDate]))} />
-        <CountryGrid countries={snapshot.countries} />
+        <OutbreakTimeline snapshot={snapshot} />
+        <CountryInfectionHistory events={snapshot.countryInfectionEvents} anchor={snapshot} />
+        <ZombieHordeMovements events={snapshot.zombieHordeEvents} anchor={snapshot} />
+        <CountryGrid countries={snapshot.countries} anchor={snapshot} />
       </>}
       {history.length > 0 && <>
         <section className="surface chart-panel" aria-label="Global history chart panel">

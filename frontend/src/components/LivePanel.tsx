@@ -8,7 +8,7 @@ import { CountryOverview } from './CountryOverview.tsx'
 import { CountryGrid } from './CountryGrid.tsx'
 import { CountrySelector } from './CountrySelector.tsx'
 import { CountryInfectionHistory } from './CountryInfectionHistory.tsx'
-import { GameMilestones } from './GameMilestones.tsx'
+import { OutbreakTimeline } from './OutbreakTimeline.tsx'
 import { CureProgress } from './CureProgress.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { MetricCard } from './MetricCard.tsx'
@@ -51,11 +51,10 @@ export function LivePanel({ live }: { live: LiveGameView }) {
           tone="zombies" quiet={metrics.zombies === 0} />
       </div>
     </section>
-    <GameMilestones events={snapshot.gameMilestones} />
-    <CountryInfectionHistory events={snapshot.countryInfectionEvents} />
-    <ZombieHordeMovements events={snapshot.zombieHordeEvents}
-      datesByDay={new Map([[snapshot.day, snapshot.gameDate]])} />
-    <CountryGrid countries={snapshot.countries} />
+    <OutbreakTimeline snapshot={snapshot} />
+    <CountryInfectionHistory events={snapshot.countryInfectionEvents} anchor={snapshot} />
+    <ZombieHordeMovements events={snapshot.zombieHordeEvents} anchor={snapshot} />
+    <CountryGrid countries={snapshot.countries} anchor={snapshot} />
     <div className="country-layout">
       <section className="surface country-pick-panel" aria-label="Choose live country">
         <div className="panel-heading"><div><span className="eyebrow">COUNTRY</span><h2>Explore the map data</h2></div></div>

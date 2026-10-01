@@ -67,6 +67,17 @@ export interface GameMilestone {
   diseaseId: number
 }
 
+export type PublicOrderStatus = 'normal' | 'general_disorder' | 'mass_disorder' | 'near_anarchy' | 'anarchy'
+
+export interface PublicOrderEvent {
+  countryId: string
+  turn: number
+  fromStatus: PublicOrderStatus
+  toStatus: PublicOrderStatus
+  publicOrder: number
+  direction: 'deteriorated' | 'improved'
+}
+
 export interface LiveSnapshot {
   capturedAt: string
   diseaseTurn: number
@@ -78,6 +89,7 @@ export interface LiveSnapshot {
   zombieHordeEvents: ZombieHordeEvent[]
   countryInfectionEvents: CountryInfectionEvent[]
   gameMilestones: GameMilestone[]
+  publicOrderEvents: PublicOrderEvent[]
 }
 
 export interface HistoricalSnapshot extends LiveSnapshot {

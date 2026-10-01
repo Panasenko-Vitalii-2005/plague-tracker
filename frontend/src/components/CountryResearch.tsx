@@ -1,5 +1,6 @@
 import type { CountryCureResearch, GovernmentActionEvent } from '../api/types.ts'
 import { formatGovernmentAction, formatResearchAllocation, formatResearchBudget } from '../domain/countryResearch.ts'
+import { formatGameTurn, type GameDateAnchor } from '../domain/gameDate.ts'
 import './CountryResearch.css'
 
 type FlaskState = keyof CountryCureResearch['flasks']
@@ -44,7 +45,10 @@ export function CountryResearch({ cureResearch }: { cureResearch: CountryCureRes
   </section>
 }
 
-export function CountryGovernmentActions({ actions }: { actions: readonly GovernmentActionEvent[] }) {
+export function CountryGovernmentActions({ actions, anchor }: {
+  actions: readonly GovernmentActionEvent[]
+  anchor?: GameDateAnchor
+}) {
   if (actions.length === 0) {
     return <p className="country-actions-empty">No government actions</p>
   }
@@ -55,7 +59,8 @@ export function CountryGovernmentActions({ actions }: { actions: readonly Govern
       {[...actions].reverse().map((action, index) => <li key={`${action.id}-${action.turn}-${index}`}
         className={action.removed ? 'is-removed' : undefined}>
         <span title={action.id}>{formatGovernmentAction(action.id)}</span>
-        <small>Turn {action.turn}{action.removed && <em> · Removed</em>}</small>
+        <small>{anchor ? formatGameTurn(action.turn, anchor) : `Day ${action.turn}`}
+          {action.removed && <em> · Removed</em>}</small>
       </li>)}
     </ol>
   </details>

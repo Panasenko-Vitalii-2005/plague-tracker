@@ -2,10 +2,12 @@ import type {
   CollectorStatus, CountryCureResearch, CountryHistoryPoint, CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot,
   InfrastructureStatus,
   GameMilestone, GameMilestoneType, GameSession, GlobalHistoryPoint, HistoricalSnapshot, LiveSnapshot, LiveSnapshotEvent, LiveState,
+  PublicOrderEvent,
   SessionDetails, SessionHistoryResponse, SessionSummary,
   SessionCountriesResponse,
   ZombieHordeEvent,
 } from './types.ts'
+import { isPublicOrderStatus, publicOrderStatus, publicOrderStatuses } from '../domain/publicOrder.ts'
 
 type RecordValue = Record<string, unknown>
 
@@ -187,6 +189,28 @@ function parseGameMilestone(value: unknown): GameMilestone {
   }
 }
 
+function parsePublicOrderEvent(value: unknown): PublicOrderEvent {
+  const data = record(value, 'public order event')
+  const countryId = string(data.countryId, 'public order.countryId')
+  if (!countryId.trim() || countryId.length > 4096) {
+    throw new Error('Invalid public order.countryId: expected non-empty string')
+  }
+  const turn = nonNegativeInteger(data.turn, 'public order.turn')
+  if (!isPublicOrderStatus(data.fromStatus) || !isPublicOrderStatus(data.toStatus)
+    || data.fromStatus === data.toStatus) {
+    throw new Error('Invalid public order status transition')
+  }
+  const raw = number(data.publicOrder, 'public order.publicOrder')
+  if (raw < 0 || raw > 1 || publicOrderStatus(raw) !== data.toStatus) {
+    throw new Error('Invalid public order.publicOrder: does not match toStatus')
+  }
+  const expectedDirection = publicOrderStatuses.indexOf(data.toStatus) > publicOrderStatuses.indexOf(data.fromStatus)
+    ? 'deteriorated' : 'improved'
+  if (data.direction !== expectedDirection) throw new Error('Invalid public order.direction')
+  return { countryId, turn, fromStatus: data.fromStatus, toStatus: data.toStatus,
+    publicOrder: raw, direction: expectedDirection }
+}
+
 export function parseLiveSnapshot(value: unknown): LiveSnapshot {
   const data = record(value, 'live snapshot')
   return {
@@ -203,6 +227,8 @@ export function parseLiveSnapshot(value: unknown): LiveSnapshot {
       : array(data.countryInfectionEvents, 'countryInfectionEvents')).map(parseCountryInfectionEvent),
     gameMilestones: (data.gameMilestones === undefined ? []
       : array(data.gameMilestones, 'gameMilestones')).map(parseGameMilestone),
+    publicOrderEvents: (data.publicOrderEvents === undefined ? []
+      : array(data.publicOrderEvents, 'publicOrderEvents')).map(parsePublicOrderEvent),
   }
 }
 

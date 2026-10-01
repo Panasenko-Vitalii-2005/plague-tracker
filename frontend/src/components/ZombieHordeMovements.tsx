@@ -1,12 +1,13 @@
 import type { ZombieHordeEvent } from '../api/types.ts'
 import { formatCountryName } from '../domain/countries.ts'
 import { formatPopulation } from '../domain/format.ts'
+import { formatGameTurn, type GameDateAnchor } from '../domain/gameDate.ts'
 
-export function ZombieHordeMovements({ events, datesByDay }: {
+export function ZombieHordeMovements({ events, anchor }: {
   events: readonly ZombieHordeEvent[]
-  datesByDay?: ReadonlyMap<number, string>
+  anchor?: GameDateAnchor
 }) {
-  const dayLabel = (day: number) => `Day ${day}${datesByDay?.has(day) ? ` · ${datesByDay.get(day)}` : ''}`
+  const dayLabel = (day: number) => anchor ? formatGameTurn(day, anchor) : `Day ${day}`
 
   return <section className="surface horde-panel" aria-label="Zombie Horde Movements">
     <div className="panel-heading"><div><span className="eyebrow">CAMPAIGN MOVEMENTS</span>

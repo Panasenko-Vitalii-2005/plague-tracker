@@ -60,10 +60,21 @@ country selection and history work when no game is running. Display labels
 only replace underscores with spaces and capitalize words; no 58-country
 mapping is hardcoded.
 
+The global **Outbreak Timeline** merges the selected snapshot's Game Milestones,
+country Government Actions, and derived Public Order transitions. It sorts by
+game turn; equal-turn entries retain source order (milestone, action, Public
+Order), including duplicates. LIVE uses only the current snapshot and HISTORY
+only the selected saved day. Country Infection History and Zombie Horde
+Movements remain separate. Event dates use the selected snapshot's authoritative
+`day` and `gameDate` as a UTC calendar-day anchor; `capturedAt` is never used.
+Country cards show the raw Public Order fraction as a percentage alongside its
+backend-defined state: Normal (>=0.90), General Disorder (>=0.60), Mass
+Disorder (>=0.30), Near Anarchy (>0), or Anarchy (=0). Null remains N/A.
+
 The global **Country Infection History** section appears in LIVE and HISTORY
 without changing country cards. It reads the selected snapshot's cumulative
 `countryInfectionEvents` in backend replay order, including duplicates, and
-shows friendly country names with the recorded game turn (`Day N`). The list
+shows friendly country names with the recorded game turn and in-game date. The list
 is compact and scrollable; an empty selected snapshot says “No infection
 history available for this snapshot.” LIVE uses only the current SSE snapshot;
 HISTORY uses only the selected saved day, so an older day is never enriched

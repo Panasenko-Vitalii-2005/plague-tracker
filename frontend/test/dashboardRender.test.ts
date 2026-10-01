@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer, type ViteDevServer } from 'vite'
 import type { LiveGameView } from '../src/api/liveStore.ts'
-import type { CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot, GameMilestone, HistoricalSnapshot, SessionCountriesResponse, SessionDetails,
+import type { CountryHistoryResponse, CountryInfectionEvent, CountrySnapshot, GameMilestone, HistoricalSnapshot, LiveSnapshot, SessionCountriesResponse, SessionDetails,
   SessionHistoryResponse, SessionSummary, ZombieHordeEvent } from '../src/api/types.ts'
 import { countryStatusComposition } from '../src/domain/countryDonut.ts'
 import type { Resource } from '../src/hooks/useHistory.ts'
@@ -18,7 +18,7 @@ let HistoryDashboard: typeof import('../src/components/HistoryPanel.tsx').Histor
 let CountryGrid: typeof import('../src/components/CountryGrid.tsx').CountryGrid
 let ZombieHordeMovements: typeof import('../src/components/ZombieHordeMovements.tsx').ZombieHordeMovements
 let CountryInfectionHistory: typeof import('../src/components/CountryInfectionHistory.tsx').CountryInfectionHistory
-let GameMilestones: typeof import('../src/components/GameMilestones.tsx').GameMilestones
+let OutbreakTimeline: typeof import('../src/components/OutbreakTimeline.tsx').OutbreakTimeline
 
 before(async () => {
   server = await createServer({ root: process.cwd(), server: { middlewareMode: true, hmr: false }, appType: 'custom' })
@@ -29,7 +29,7 @@ before(async () => {
   CountryGrid = (await server.ssrLoadModule('/src/components/CountryGrid.tsx')).CountryGrid
   ZombieHordeMovements = (await server.ssrLoadModule('/src/components/ZombieHordeMovements.tsx')).ZombieHordeMovements
   CountryInfectionHistory = (await server.ssrLoadModule('/src/components/CountryInfectionHistory.tsx')).CountryInfectionHistory
-  GameMilestones = (await server.ssrLoadModule('/src/components/GameMilestones.tsx')).GameMilestones
+  OutbreakTimeline = (await server.ssrLoadModule('/src/components/OutbreakTimeline.tsx')).OutbreakTimeline
 })
 after(async () => { await server?.close() })
 
@@ -73,27 +73,44 @@ const milestones: GameMilestone[] = [
   { type: 'worse_than_smallpox', turn: 316, countryId: null, diseaseId: 0 },
 ]
 
-test('Game Milestones renders readable labels, days, friendly names and duplicate entries', () => {
-  const empty = renderToStaticMarkup(createElement(GameMilestones, { events: [] }))
-  assert.match(empty, /Game Milestones/)
-  assert.match(empty, /No game milestones available for this snapshot/)
-  assert.doesNotMatch(empty, /class="milestone-item"/)
+test('Outbreak Timeline and dedicated histories show exact event dates and readable labels', () => {
+  const anchor: LiveSnapshot = {
+    capturedAt: '2035-01-01T00:00:00Z', day: 243, gameDate: '2027-05-30',
+    diseaseTurn: 240, eventTurn: 300, cureProgress: 0,
+    countries: [countryCardFixture('japan', 0, { publicOrder: 0.8998,
+      governmentActions: [{ id: 'research_funding_2', turn: 243, removed: false },
+        { id: 'border_closed', turn: 242, removed: true }] })],
+    gameMilestones: [{ type: 'first_death', turn: 243, countryId: 'japan', diseaseId: 0 }],
+    publicOrderEvents: [{ countryId: 'japan', turn: 243, fromStatus: 'normal',
+      toStatus: 'general_disorder', publicOrder: 0.8998, direction: 'deteriorated' }],
+    countryInfectionEvents: [{ countryId: 'japan', turn: 242, eventTurn: 299, diseaseId: 0 }],
+    zombieHordeEvents: [{ ...horde, turn: 242, arrivalTurn: 244, arrivalEventTurn: 302 }],
+  }
+  const timeline = renderToStaticMarkup(createElement(OutbreakTimeline, { snapshot: anchor }))
+  assert.match(timeline, /Outbreak Timeline/)
+  assert.match(timeline, /First death in Japan/)
+  assert.match(timeline, /Japan enacted Research Funding 2/)
+  assert.match(timeline, /Japan lifted Border Closed/)
+  assert.match(timeline, /Public order in Japan deteriorated to General Disorder · 89,98%/)
+  assert.match(timeline, /Day 242 · 29 May 2027/)
+  assert.match(timeline, /Day 243 · 30 May 2027/)
+  assert.ok(timeline.indexOf('Japan lifted Border Closed') < timeline.indexOf('First death in Japan'))
+  assert.ok(timeline.indexOf('First death in Japan') < timeline.indexOf('Japan enacted Research Funding 2'))
+  assert.ok(timeline.indexOf('Japan enacted Research Funding 2') < timeline.indexOf('Public order in Japan'))
+  assert.doesNotMatch(timeline, /aria-label="Game Milestones"|Country Infection History|Zombie Horde Movements/)
 
-  const html = renderToStaticMarkup(createElement(GameMilestones, {
-    events: [...milestones, { ...milestones[3]! }],
-  }))
-  assert.equal((html.match(/class="milestone-item"/g) ?? []).length, 10)
-  for (const label of [
-    'Virus DNA detected', 'More infectious than TB', 'More infectious than HIV',
-    'Disease detected in Soudi Arabia', 'More infectious than the Common Cold',
-    'First death in Afghanistan', 'Worse than the Black Death',
-    'Worse than Spanish Flu', 'Worse than Smallpox',
-  ]) assert.match(html, new RegExp(label))
-  assert.ok(html.indexOf('Virus DNA detected') < html.indexOf('More infectious than TB'))
-  assert.equal((html.match(/Disease detected in Soudi Arabia/g) ?? []).length, 2)
-  assert.match(html, /Day 11/)
-  assert.match(html, /Day 253/)
-  assert.doesNotMatch(html, /soudi_arabia|afghanistan|diseaseId|eventTurn|virus_dna_detected/)
+  const infection = renderToStaticMarkup(createElement(CountryInfectionHistory,
+    { events: anchor.countryInfectionEvents, anchor }))
+  assert.match(infection, /Japan/)
+  assert.match(infection, /Day 242 · 29 May 2027/)
+  const hordes = renderToStaticMarkup(createElement(ZombieHordeMovements,
+    { events: anchor.zombieHordeEvents, anchor }))
+  assert.match(hordes, /Departed: Day 242 · 29 May 2027/)
+  assert.match(hordes, /Arrived: Day 244 · 31 May 2027/)
+  const cards = renderToStaticMarkup(createElement(CountryGrid, { countries: anchor.countries, anchor }))
+  assert.match(cards, /<dt>Public Order<\/dt><dd>89,98% · General Disorder<\/dd>/)
+  assert.match(cards, /Research Funding 2<\/span><small>Day 243 · 30 May 2027/)
+  assert.match(cards, /Border Closed<\/span><small>Day 242 · 29 May 2027/)
 })
 
 test('infection history renders friendly names in replay order and preserves duplicates', () => {
@@ -134,13 +151,13 @@ test('horde section handles empty, in-transit and arrived events without technic
   const arrived = { ...horde, arrivalTurn: 13, arrivalEventTurn: 21 }
   const duplicate = renderToStaticMarkup(createElement(ZombieHordeMovements, {
     events: [horde, arrived, { ...arrived }],
-    datesByDay: new Map([[10, '2027-03-07'], [13, '2027-03-10']]),
+    anchor: { day: 10, gameDate: '2027-03-07' },
   }))
   assert.equal((duplicate.match(/class="horde-item"/g) ?? []).length, 3)
   assert.equal((duplicate.match(/358 580 zombies/g) ?? []).length, 3)
   assert.ok(duplicate.indexOf('In transit') < duplicate.indexOf('Arrived: Day 13'))
-  assert.match(duplicate, /Departed: Day 10 · 2027-03-07/)
-  assert.match(duplicate, /Arrived: Day 13 · 2027-03-10/)
+  assert.match(duplicate, /Departed: Day 10 · 7 Mar 2027/)
+  assert.match(duplicate, /Arrived: Day 13 · 10 Mar 2027/)
   assert.doesNotMatch(duplicate, /1178|arrivalEventTurn|eventTurn/)
 })
 
@@ -208,9 +225,9 @@ test('country cards show independent public order percentages and distinguish ze
     countryCardFixture('morroco', 3, { publicOrder: null }),
   ]
   const html = renderToStaticMarkup(createElement(CountryGrid, { countries: input }))
-  assert.match(html, /<dt>Public Order<\/dt><dd>100,00%<\/dd>/)
-  assert.match(html, /<dt>Public Order<\/dt><dd>0,00%<\/dd>/)
-  assert.match(html, /<dt>Public Order<\/dt><dd>94,98%<\/dd>/)
+  assert.match(html, /<dt>Public Order<\/dt><dd>100,00% · Normal<\/dd>/)
+  assert.match(html, /<dt>Public Order<\/dt><dd>0,00% · Anarchy<\/dd>/)
+  assert.match(html, /<dt>Public Order<\/dt><dd>94,98% · Normal<\/dd>/)
   assert.match(html, /<dt>Public Order<\/dt><dd>N\/A<\/dd>/)
   assert.equal((html.match(/<dt>Public Order<\/dt>/g) ?? []).length, 4)
   assert.deepEqual(input.map((country) => country.publicOrder), [1, 0, 0.9497843, null])
@@ -287,7 +304,7 @@ test('government actions are newest first without mutation, retain unknown and r
   assert.ok(html.indexOf('Urban Evacuation Ordered') < html.indexOf('Pandemic Alert Issued'))
   assert.ok(html.indexOf('Pandemic Alert Issued') < html.indexOf('Research Funding 2'))
   assert.match(html, /title="urban_evacuation_ordered"/)
-  assert.match(html, /Pandemic Alert Issued<\/span><small>Turn 138<em> · Removed<\/em>/)
+  assert.match(html, /Pandemic Alert Issued<\/span><small>Day 138<em> · Removed<\/em>/)
   assert.deepEqual(actions.map((action) => action.id),
     ['research_funding_2', 'pandemic_alert_issued', 'urban_evacuation_ordered'])
 
@@ -321,7 +338,7 @@ test('live panel renders actual snapshot values and raw country option IDs', () 
     session: null, sessionId: '12345678-aaaa', error: null,
     snapshot: { capturedAt: '2026-09-23T00:00:00Z', day: 184, gameDate: '2028-04-12', diseaseTurn: 200,
       eventTurn: 211, cureProgress: 34.2769, zombieHordeEvents: [horde],
-      countryInfectionEvents: infectionEvents, gameMilestones: [], countries: [
+      countryInfectionEvents: infectionEvents, gameMilestones: [], publicOrderEvents: [], countries: [
         { index: 0, id: 'south_africa', originalPopulation: 1000, currentPopulation: 990,
           healthyPopulation: 800, infected: 170, deadPopulation: 20, zombies: 0,
           publicOrder: 0.4627481,
@@ -359,7 +376,8 @@ test('infection history switches 333 empty → 334 recorded → 333 empty withou
     firstGameDate: '2027-08-01', lastGameDate: '2027-08-12' }
   const day333: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 333, gameDate: '2027-08-01', diseaseTurn: 333, eventTurn: 400, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], countries: [countryCardFixture('egypt', 0)] }
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], publicOrderEvents: [],
+    countries: [countryCardFixture('egypt', 0)] }
   const allEvents = [...infectionEvents, ...Array.from({ length: 54 }, (_, index) => ({
     countryId: `country_${index}`, turn: 271 + index, eventTurn: 386 + index, diseaseId: 0,
   }))]
@@ -393,13 +411,13 @@ test('infection history switches 333 empty → 334 recorded → 333 empty withou
   assert.doesNotMatch(oldAgain, /infection-history-item|Soudi Arabia|Greenland/)
 })
 
-test('Game Milestones HISTORY follows stored 0 → 5 → 6 → 7 progression without LIVE leakage', () => {
+test('Game Milestone entries in Outbreak Timeline HISTORY follow stored 0 → 5 → 6 → 7 progression', () => {
   const summary: SessionSummary = { id: 'milestone-session', startedAt: '2026-09-23T00:00:00Z', endedAt: null,
     firstDay: 10, lastDay: 255, snapshotCount: 4, isOpen: true,
     firstGameDate: '2027-01-01', lastGameDate: '2027-09-12' }
   const base: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 10, gameDate: '2027-01-01', diseaseTurn: 10, eventTurn: 10, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [],
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], publicOrderEvents: [],
     countries: [countryCardFixture('soudi_arabia', 0)] }
   const day224: HistoricalSnapshot = { ...base, day: 224, gameDate: '2027-08-12',
     gameMilestones: milestones.slice(0, 5) }
@@ -417,7 +435,7 @@ test('Game Milestones HISTORY follows stored 0 → 5 → 6 → 7 progression wit
     ...common, replay: { ...replay(snapshot, snapshot.day), days: [10, 224, 234, 254],
       index: [10, 224, 234, 254].indexOf(snapshot.day) },
   }))
-  const section = (html: string) => html.match(/<section class="surface milestone-panel"[\s\S]*?<\/section>/)?.[0] ?? ''
+  const section = (html: string) => html.match(/<section class="surface timeline-panel"[\s\S]*?<\/section>/)?.[0] ?? ''
   const live: LiveGameView = { connectionState: 'live', collectorStatus: { running: true, lastError: null },
     session: null, sessionId: summary.id, error: null,
     snapshot: { ...day254, day: 255, gameMilestones: milestones.slice(0, 7) } }
@@ -428,16 +446,61 @@ test('Game Milestones HISTORY follows stored 0 → 5 → 6 → 7 progression wit
   const seven = section(renderDay(day254))
   const liveNow = section(renderToStaticMarkup(createElement(LivePanel, { live })))
   const earlierAgain = section(renderDay(day224))
-  assert.match(empty, /No game milestones available for this snapshot/)
-  assert.doesNotMatch(empty, /milestone-item|Virus DNA detected/)
+  assert.match(empty, /No outbreak timeline events available for this snapshot/)
+  assert.doesNotMatch(empty, /timeline-item|Virus DNA detected/)
   assert.deepEqual([five, six, seven, liveNow, earlierAgain]
-    .map((html) => (html.match(/class="milestone-item"/g) ?? []).length), [5, 6, 7, 7, 5])
+    .map((html) => (html.match(/class="timeline-item is-milestone"/g) ?? []).length), [5, 6, 7, 7, 5])
+  assert.doesNotMatch(liveNow, /aria-label="Game Milestones"/)
   assert.match(five, /Disease detected in Soudi Arabia/)
   assert.doesNotMatch(five, /First death in Afghanistan|Worse than the Black Death/)
   assert.match(six, /First death in Afghanistan/)
   assert.doesNotMatch(six, /Worse than the Black Death/)
   assert.match(seven, /Worse than the Black Death/)
   assert.doesNotMatch(earlierAgain, /First death in Afghanistan|Worse than the Black Death/)
+})
+
+test('Outbreak Timeline LIVE and HISTORY use only their selected snapshot, including backward navigation', () => {
+  const summary: SessionSummary = { id: 'timeline-session', startedAt: '2026-09-23T00:00:00Z', endedAt: null,
+    firstDay: 242, lastDay: 244, snapshotCount: 2, isOpen: true,
+    firstGameDate: '2027-05-29', lastGameDate: '2027-05-31' }
+  const early: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
+    day: 242, gameDate: '2027-05-29', diseaseTurn: 242, eventTurn: 300, cureProgress: 0,
+    zombieHordeEvents: [], countryInfectionEvents: [], publicOrderEvents: [],
+    gameMilestones: [{ type: 'virus_dna_detected', turn: 240, countryId: null, diseaseId: 0 }],
+    countries: [countryCardFixture('japan', 0, { publicOrder: 0.91,
+      governmentActions: [{ id: 'research_funding_2', turn: 241, removed: false }] })] }
+  const late: HistoricalSnapshot = { ...early, day: 244, gameDate: '2027-05-31',
+    gameMilestones: [...early.gameMilestones,
+      { type: 'first_death', turn: 243, countryId: 'japan', diseaseId: 0 }],
+    countries: [countryCardFixture('japan', 0, { publicOrder: 0.8998,
+      governmentActions: [...early.countries[0]!.governmentActions,
+        { id: 'border_closed', turn: 243, removed: false }] })],
+    publicOrderEvents: [{ countryId: 'japan', turn: 243, fromStatus: 'normal',
+      toStatus: 'general_disorder', publicOrder: 0.8998, direction: 'deteriorated' }],
+  }
+  const common = { sessions: loaded([summary]), session: idle<SessionDetails>(),
+    global: idle<SessionHistoryResponse>(), countries: loaded<SessionCountriesResponse>({ sessionId: summary.id,
+      countries: [{ id: 'japan', index: 0 }] }), country: idle<CountryHistoryResponse>(),
+    sessionId: summary.id, onSessionChange: () => {}, preferredCountryId: 'japan', onCountryChange: () => {} }
+  const section = (html: string) => html.match(/<section class="surface timeline-panel"[\s\S]*?<\/section>/)?.[0] ?? ''
+  const renderDay = (snapshot: HistoricalSnapshot) => section(renderToStaticMarkup(createElement(HistoryDashboard, {
+    ...common, replay: { ...replay(snapshot, snapshot.day), days: [242, 244], index: snapshot.day === 242 ? 0 : 1 },
+  })))
+  const live: LiveGameView = { connectionState: 'live', collectorStatus: { running: true, lastError: null },
+    session: null, sessionId: summary.id, error: null,
+    snapshot: { ...late, day: 245, gameDate: '2027-06-01' } }
+  const earlyHtml = renderDay(early)
+  const lateHtml = renderDay(late)
+  const liveHtml = section(renderToStaticMarkup(createElement(LivePanel, { live })))
+  assert.match(earlyHtml, /Virus DNA detected/)
+  assert.match(earlyHtml, /Japan enacted Research Funding 2/)
+  assert.doesNotMatch(earlyHtml, /First death|Border Closed|Public order in Japan/)
+  assert.match(lateHtml, /First death in Japan/)
+  assert.match(lateHtml, /Japan enacted Border Closed/)
+  assert.match(lateHtml, /Public order in Japan deteriorated to General Disorder/)
+  assert.match(lateHtml, /Day 243 · 30 May 2027/)
+  assert.match(liveHtml, /Public order in Japan deteriorated to General Disorder/)
+  assert.doesNotMatch(renderDay(early), /First death|Border Closed|Public order in Japan/)
 })
 
 test('history dashboard renders saved session, global values and historical country data', () => {
@@ -465,6 +528,7 @@ test('history dashboard renders saved session, global values and historical coun
     zombieHordeEvents: [{ ...horde, arrivalTurn: 13, arrivalEventTurn: 21 }],
     countryInfectionEvents: [],
     gameMilestones: [],
+    publicOrderEvents: [],
     countries: [{ index: 1, id: 'south_africa', originalPopulation: 100, currentPopulation: 90,
       healthyPopulation: 60, infected: 30, deadPopulation: 10, zombies: 0,
       publicOrder: null,
@@ -490,8 +554,8 @@ test('history dashboard renders saved session, global values and historical coun
   assert.match(html, /<dt>Infected<\/dt><dd>30<\/dd>/)
   assert.match(html, /\$2,500\.99/)
   assert.match(html, /Urban Evacuation Ordered/)
-  assert.match(html, /Arrived: Day 13 · 2026-01-13/)
-  assert.match(html, /Departed: Day 10 · 2026-01-10/)
+  assert.match(html, /Arrived: Day 13 · 13 Jan 2026/)
+  assert.match(html, /Departed: Day 10 · 10 Jan 2026/)
   assert.doesNotMatch(html, /day 11/i)
 
   const prior: HistoricalSnapshot = { ...selected, day: 10, gameDate: '2026-01-10', cureProgress: 2,
@@ -546,7 +610,7 @@ test('Egypt public order stays tied to the selected historical day, not the late
     firstGameDate: '2027-06-14', lastGameDate: '2027-07-20' }
   const historical: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 229, gameDate: '2027-06-14', diseaseTurn: 229, eventTurn: 229, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [],
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], publicOrderEvents: [],
     countries: [countryCardFixture('egypt', 0, { publicOrder: 0.9497843 })] }
   const later: HistoricalSnapshot = { ...historical, day: 265, gameDate: '2027-07-20',
     countries: [countryCardFixture('egypt', 0, { publicOrder: 0.50941885 })] }
@@ -567,12 +631,12 @@ test('Egypt public order stays tied to the selected historical day, not the late
   const liveDay = renderToStaticMarkup(createElement(LivePanel, { live }))
 
   assert.match(firstDay, /Saved day 229/)
-  assert.match(firstDay, /<dt>Public Order<\/dt><dd>94,98%<\/dd>/)
+  assert.match(firstDay, /<dt>Public Order<\/dt><dd>94,98% · Normal<\/dd>/)
   assert.doesNotMatch(firstDay, /50,94%|46,27%/)
   assert.match(laterDay, /Saved day 265/)
-  assert.match(laterDay, /<dt>Public Order<\/dt><dd>50,94%<\/dd>/)
-  assert.match(liveDay, /<dt>Public Order<\/dt><dd>46,27%<\/dd>/)
-  assert.match(renderDay(historical), /<dt>Public Order<\/dt><dd>94,98%<\/dd>/)
+  assert.match(laterDay, /<dt>Public Order<\/dt><dd>50,94% · Mass Disorder<\/dd>/)
+  assert.match(liveDay, /<dt>Public Order<\/dt><dd>46,27% · Mass Disorder<\/dd>/)
+  assert.match(renderDay(historical), /<dt>Public Order<\/dt><dd>94,98% · Normal<\/dd>/)
 })
 
 test('selected-country overview and cards use infrastructure from the selected historical day', () => {
@@ -581,7 +645,8 @@ test('selected-country overview and cards use infrastructure from the selected h
     firstGameDate: '2027-01-01', lastGameDate: '2027-02-14' }
   const historical: HistoricalSnapshot = { sessionId: summary.id, capturedAt: '2026-09-23T00:00:00Z',
     day: 267, gameDate: '2027-01-01', diseaseTurn: 267, eventTurn: 267, cureProgress: 0,
-    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], countries: [countryCardFixture('egypt', 0,
+    zombieHordeEvents: [], countryInfectionEvents: [], gameMilestones: [], publicOrderEvents: [],
+    countries: [countryCardFixture('egypt', 0,
       { borderStatus: 'open', airportStatus: 'open', portStatus: 'open' })] }
   const later: HistoricalSnapshot = { ...historical, day: 311, gameDate: '2027-02-14',
     countries: [countryCardFixture('egypt', 0,
